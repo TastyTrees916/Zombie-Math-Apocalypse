@@ -352,7 +352,6 @@
           👊 Defeat the BOSS every 5 correct answers to level up!<br>
           🎨 Check MENU → View Progress for SKINS and CHALLENGES!
         </div>
-        <div style="font-size:13px;color:#aaa;margin-bottom:15px;">Starting in <span id="controlsCountdown">5</span>s...</div>
         <button id="controlsGotIt" style="font-size:18px;padding:12px 28px;background:#4488ff;color:white;border:none;border-radius:10px;cursor:pointer;">GOT IT! LET'S GO! →</button>
       </div>
     </div>
@@ -442,12 +441,6 @@
             <button class="modal-close-btn" id="closePauseX">✕</button>
             <h2>⏸️ PAUSED</h2>
             <div style="margin: 20px 0; font-size: 18px;">Game is paused. Take a breather!</div>
-            <div style="margin: 15px 0;">
-                <label style="display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" id="godModeToggle" style="width: 20px; height: 20px; cursor: pointer;">
-                    <span style="font-size: 16px;">God Mode (Testing Only)</span>
-                </label>
-            </div>
             <button id="resumeBtn">Resume Game</button>
             <button id="musicToggleBtn">🎵 MUSIC: ON</button>
             <button id="viewProgressBtn2" style="background: #4488ff;">View Progress 📊</button>
@@ -608,7 +601,6 @@ window.addEventListener('load', function() {
     // Game state
     let gameRunning = false;
     let gamePaused = false;
-    let godMode = false;
     let gameMode = 'multiply';
     let score = 0;
     let lives = 5;
@@ -916,13 +908,6 @@ window.addEventListener('load', function() {
         }
         if (!localStorage.getItem('zombieMathControlsSeen')) {
             document.getElementById('controlsScreen').style.display = 'flex';
-            let cd = 5;
-            const cdEl = document.getElementById('controlsCountdown');
-            const cdInterval = setInterval(() => {
-                cd--;
-                cdEl.textContent = cd;
-                if (cd <= 0) { clearInterval(cdInterval); dismissControls(); }
-            }, 1000);
             function dismissControls() {
                 localStorage.setItem('zombieMathControlsSeen', '1');
                 document.getElementById('controlsScreen').style.display = 'none';
@@ -930,10 +915,7 @@ window.addEventListener('load', function() {
                 totalCorrectAnswers = 0;
                 totalQuestions = 0;
             }
-            document.getElementById('controlsGotIt').onclick = function() {
-                clearInterval(cdInterval);
-                dismissControls();
-            };
+            document.getElementById('controlsGotIt').onclick = dismissControls;
         } else {
             gameRunning = true;
             totalCorrectAnswers = 0;
@@ -1013,9 +995,6 @@ window.addEventListener('load', function() {
         location.reload();
     });
     
-    document.getElementById('godModeToggle').addEventListener('change', function(e) {
-        godMode = e.target.checked;
-    });
     
     document.getElementById('mathSubmit').addEventListener('click', checkAnswer);
     document.getElementById('mathInput').addEventListener('keypress', (e) => {
@@ -1851,7 +1830,7 @@ window.addEventListener('load', function() {
             }
         }
         
-        if (invulnerableTimer <= 0 && !godMode && !shieldActive) {
+        if (invulnerableTimer <= 0 && !shieldActive) {
             const dx = boss.x - player.x;
             const dy = boss.y - player.y;
             if (Math.sqrt(dx*dx + dy*dy) < boss.size + player.size) {
@@ -2398,7 +2377,7 @@ window.addEventListener('load', function() {
         }
         
         for (let i = bullets.length - 1; i >= 0; i--) {
-            if (bullets[i] && bullets[i].type === 'enemy' && invulnerableTimer <= 0 && !godMode && !shieldActive) {
+            if (bullets[i] && bullets[i].type === 'enemy' && invulnerableTimer <= 0 && !shieldActive) {
                 const dx = bullets[i].x - player.x;
                 const dy = bullets[i].y - player.y;
                 if (Math.sqrt(dx*dx + dy*dy) < bullets[i].size + player.size) {
@@ -2442,7 +2421,7 @@ window.addEventListener('load', function() {
             zombies[i].x += (dx / dist) * zombies[i].speed * zombieSpeed;
             zombies[i].y += (dy / dist) * zombies[i].speed * zombieSpeed;
 
-            if (dist < zombies[i].size + player.size && invulnerableTimer <= 0 && !godMode && !shieldActive) {
+            if (dist < zombies[i].size + player.size && invulnerableTimer <= 0 && !shieldActive) {
                 lives--;
                 invulnerableTimer = 120;
                 zombies.splice(i, 1);
