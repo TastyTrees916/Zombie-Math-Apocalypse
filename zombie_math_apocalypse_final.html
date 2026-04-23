@@ -650,6 +650,9 @@ window.addEventListener('load', function() {
     let nextLeadTime = 0, nextBassTime = 0;
     let musicSchedulerInterval = null;
     let musicStarted = false;
+    let victorySequencePlaying = false;
+    let sequenceTimer = 0;
+    let victoryState = null;
 
     // Game entities
     let bullets = [];
@@ -2043,9 +2046,8 @@ window.addEventListener('load', function() {
         bassNoteIdx = 0;
 
         if (currentLevel > 9) {
-            setTimeout(() => {
-                showVictory();
-            }, 3000);
+            if (musicSchedulerInterval) { clearInterval(musicSchedulerInterval); musicSchedulerInterval = null; }
+            setTimeout(() => { startVictorySequence(); }, 1000);
         } else {
             setTimeout(() => {
                 showLevelTransition();
@@ -2153,6 +2155,10 @@ window.addEventListener('load', function() {
         bassNoteIdx = 0;
         if (musicSchedulerInterval) { clearInterval(musicSchedulerInterval); musicSchedulerInterval = null; }
 
+        victorySequencePlaying = false;
+        sequenceTimer = 0;
+        victoryState = null;
+
         document.getElementById('gameOver').style.display = 'none';
         document.getElementById('victory').style.display = 'none';
         document.getElementById('mathModal').style.display = 'none';
@@ -2187,6 +2193,11 @@ window.addEventListener('load', function() {
     }
     
     function update() {
+        if (victorySequencePlaying) {
+            sequenceTimer++;
+            updateVictorySequence();
+            return;
+        }
         if (!gameRunning || gamePaused) return;
         
         if (shootCooldown > 0) shootCooldown--;
@@ -2554,6 +2565,10 @@ window.addEventListener('load', function() {
     }
     
     function draw() {
+        if (victorySequencePlaying) {
+            drawVictorySequence();
+            return;
+        }
         ctx.save();
         if (screenShake > 0) { ctx.translate(Math.random()*8-4, Math.random()*8-4); screenShake--; }
         ctx.fillStyle = levelConfig[currentLevel]?.bg || '#1a3a1a';
@@ -2872,6 +2887,333 @@ window.addEventListener('load', function() {
             nextBassTime += bassDur;
         }
     }
+
+    // ─── VICTORY SEQUENCE ────────────────────────────────────────────────────
+
+    function playSlotMachineSound() {
+        if (!audioContext) return;
+        const now = audioContext.currentTime;
+        for (let i = 0; i < 3; i++) {
+            const osc = audioContext.createOscillator();
+            const g = audioContext.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, now + i * 0.12);
+            osc.frequency.linearRampToValueAtTime(200, now + i * 0.12 + 0.08);
+            g.gain.setValueAtTime(0, now + i * 0.12);
+            g.gain.linearRampToValueAtTime(0.15, now + i * 0.12 + 0.005);
+            g.gain.setValueAtTime(0.15, now + i * 0.12 + 0.075);
+            g.gain.linearRampToValueAtTime(0, now + i * 0.12 + 0.08);
+            osc.connect(g); g.connect(audioContext.destination);
+            osc.start(now + i * 0.12); osc.stop(now + i * 0.12 + 0.08);
+        }
+        const dt = now + 2 * 0.12 + 0.08;
+        const ding = audioContext.createOscillator();
+        const dg = audioContext.createGain();
+        ding.type = 'sine'; ding.frequency.value = 1200;
+        dg.gain.setValueAtTime(0, dt);
+        dg.gain.linearRampToValueAtTime(0.2, dt + 0.01);
+        dg.gain.setValueAtTime(0.2, dt + 0.18);
+        dg.gain.linearRampToValueAtTime(0, dt + 0.2);
+        ding.connect(dg); dg.connect(audioContext.destination);
+        ding.start(dt); ding.stop(dt + 0.2);
+    }
+
+    function playVictoryFanfare() {
+        if (!audioContext) return;
+        const now = audioContext.currentTime;
+        const notes = [329.63, 392.00, 523.25];
+        const durs  = [0.1, 0.1, 0.2];
+        let t = now;
+        notes.forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const g = audioContext.createGain();
+            osc.type = 'square'; osc.frequency.value = freq;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.1, t + 0.01);
+            g.gain.setValueAtTime(0.1, t + durs[i] - 0.01);
+            g.gain.linearRampToValueAtTime(0, t + durs[i]);
+            osc.connect(g); g.connect(audioContext.destination);
+            osc.start(t); osc.stop(t + durs[i]);
+            t += durs[i];
+        });
+    }
+
+    function startVictorySequence() {
+        if (musicSchedulerInterval) { clearInterval(musicSchedulerInterval); musicSchedulerInterval = null; }
+        gameRunning = false;
+        victorySequencePlaying = true;
+        sequenceTimer = 0;
+        killParticles = [];
+
+        const bossTypes  = ['circle','triangle','square','pentagon','hexagon','octagon','star','rectangle','mega'];
+        const bossColors = ['#ff4444','#44ff44','#ffff44','#ff8844','#8844ff','#44ffff','#ff44ff','#ff4488','#ff0088'];
+        const bossNames  = ['CIRCLE','TRIANGLE','SQUARE','PENTAGON','HEXAGON','OCTAGON','STAR','RECTANGLE','MEGA'];
+
+        const bosses = bossTypes.map((type, i) => {
+            const bx = canvas.width  * 0.2 + Math.random() * canvas.width  * 0.65;
+            const by = canvas.height * 0.2 + Math.random() * canvas.height * 0.55;
+            return { type, name: bossNames[i], color: bossColors[i], x: bx, y: by,
+                     startX: bx, startY: by, vx: 0, vy: 0,
+                     state: 'idle', scale: 1, alpha: 1, timer: 0, fleeDelay: i * 10 };
+        });
+
+        victoryState = {
+            bosses,
+            player: { x: -60, y: canvas.height / 2 - 20, walking: true },
+            skulls: [],
+            speechBubble: { visible: false, text: "GET RATIO'D 💀", alpha: 0 },
+            textLines: [],
+            confetti: []
+        };
+
+        playSlotMachineSound();
+    }
+
+    function updateVictorySequence() {
+        const t  = sequenceTimer;
+        const vs = victoryState;
+
+        // Update kill particles
+        for (let i = killParticles.length - 1; i >= 0; i--) {
+            const kp = killParticles[i];
+            kp.x += kp.dx; kp.y += kp.dy; kp.life--;
+            if (kp.whiteFrames > 0) kp.whiteFrames--;
+            if (kp.life <= 0) killParticles.splice(i, 1);
+        }
+
+        // ACT 2 — queue bosses to flee
+        if (t === 72) vs.bosses.forEach(b => { b.state = 'queued'; });
+
+        vs.bosses.forEach(b => {
+            if (b.state === 'queued' && t >= 72 + b.fleeDelay) {
+                b.state = 'fleeing';
+                b.startX = b.x; b.startY = b.y;
+                b.vx = 3 + Math.random() * 2;
+                b.vy = (Math.random() - 0.5) * 2;
+            }
+            if (b.state === 'fleeing') {
+                b.x += b.vx; b.y += b.vy; b.timer++;
+                const dist = Math.sqrt((b.x - b.startX) ** 2 + (b.y - b.startY) ** 2);
+                if (dist >= 80) {
+                    b.state = 'exploding';
+                    for (let p = 0; p < 8; p++)
+                        killParticles.push({ x: b.x, y: b.y, dx: (Math.random()-0.5)*6, dy: (Math.random()-0.5)*6,
+                                             life: 25, maxLife: 25, color: b.color, whiteFrames: 3 });
+                }
+            }
+            if (b.state === 'exploding') b.state = 'shrinking';
+            if (b.state === 'shrinking') {
+                b.scale -= 0.08;
+                b.alpha = Math.max(0, b.scale);
+                if (b.scale <= 0) b.state = 'gone';
+            }
+        });
+
+        // Player walks in from frame 80
+        if (t >= 80 && vs.player.walking) {
+            const targetX = canvas.width / 2 - 20;
+            vs.player.x = Math.min(targetX, vs.player.x + 3.5);
+        }
+
+        // Speech bubble fade-in from frame 100
+        if (t >= 100 && t < 180) {
+            vs.speechBubble.visible = true;
+            vs.speechBubble.alpha = Math.min(1, vs.speechBubble.alpha + 1 / 15);
+        }
+
+        // ACT 3 — player arrives
+        if (t === 180) {
+            vs.player.walking = false;
+            vs.player.x = canvas.width / 2 - 20;
+            playVictoryFanfare();
+            const raw = SKINS[playerData.selectedSkin]?.color1 || '#4488ff';
+            const specialPal = ['rainbow','fire','galaxy','holo','reactive','ultimate'];
+            const sc = specialPal.includes(raw) ? '#4488ff' : raw;
+            for (let p = 0; p < 20; p++)
+                killParticles.push({ x: vs.player.x, y: vs.player.y - 18,
+                                     dx: (Math.random()-0.5)*12, dy: (Math.random()-0.5)*12,
+                                     life: 40, maxLife: 40, color: sc, whiteFrames: 0 });
+        }
+
+        // Speech bubble fade-out 180–190
+        if (t >= 180 && t <= 190) {
+            vs.speechBubble.alpha = Math.max(0, 1 - (t - 180) / 10);
+            if (t >= 190) vs.speechBubble.visible = false;
+        }
+
+        // Skull pile builds 180–270
+        if (t >= 180 && t < 270 && vs.skulls.length < 12 && (t - 180) % 6 === 0)
+            vs.skulls.push({ x: canvas.width / 2 - 20 + (Math.random()-0.5)*50, y: canvas.height / 2 + 10,
+                             scale: 0, targetScale: 0.8 + Math.random()*0.4,
+                             rotation: (Math.random()-0.5)*0.8, age: 0 });
+        vs.skulls.forEach(s => { s.age++; if (s.scale < s.targetScale) s.scale = Math.min(s.targetScale, s.scale + s.targetScale / 12); });
+
+        // ACT 4 — text cascade init
+        if (t === 270) {
+            vs.textLines = [
+                { text: 'GG EZ.',                   size: 32, color: '#00ff41', y: canvas.height*0.18,       alpha: 0, scale: 1.5, delay: 0  },
+                { text: 'YOU ARE LITERALLY HIM.',    size: 24, color: '#ffaa00', y: canvas.height*0.18 + 44,  alpha: 0, scale: 1.5, delay: 18 },
+                { text: 'NO CAP FR FR 🔥',           size: 28, color: '#ff2222', y: canvas.height*0.18 + 88,  alpha: 0, scale: 1.5, delay: 36 },
+                { text: 'MATH SECURED. 🧮',          size: 18, color: '#ffffff', y: canvas.height*0.18 + 132, alpha: 0, scale: 1.5, delay: 54 }
+            ];
+        }
+        if (t >= 270) {
+            vs.textLines.forEach(line => {
+                const el = (t - 270) - line.delay;
+                if (el >= 0 && el <= 12)      { line.alpha = el / 12;  line.scale = 1.5 - (el / 12) * 0.5; }
+                else if (el > 12)             { line.alpha = 1;        line.scale = 1; }
+            });
+            if (t % 3 === 0 && vs.confetti.length < 60) {
+                const cols = ['#00ff41','#ffaa00','#ff2222','#ffffff'];
+                vs.confetti.push({ x: Math.random()*canvas.width, y: 0,
+                                   dx: (Math.random()-0.5), dy: 2 + Math.random()*2,
+                                   life: 80, maxLife: 80,
+                                   color: cols[Math.floor(Math.random()*4)], whiteFrames: 0 });
+            }
+        }
+        for (let i = vs.confetti.length - 1; i >= 0; i--) {
+            const c = vs.confetti[i];
+            c.x += c.dx; c.y += c.dy; c.life--;
+            if (c.life <= 0) vs.confetti.splice(i, 1);
+        }
+
+        // End — show win screen
+        if (t >= 360) {
+            victorySequencePlaying = false;
+            sequenceTimer = 0;
+            victoryState = null;
+            showVictory();
+        }
+    }
+
+    function drawVictorySequence() {
+        const t  = sequenceTimer;
+        const vs = victoryState;
+
+        // ACT 1 flash
+        if (t < 20) {
+            ctx.fillStyle = Math.floor(t / 3) % 2 === 0 ? '#ffffff' : '#3a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+
+        // Background
+        ctx.fillStyle = '#3a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Bosses
+        vs.bosses.forEach(b => {
+            if (b.state === 'gone') return;
+            ctx.save();
+            ctx.translate(b.x, b.y);
+            ctx.scale(b.scale, b.scale);
+            ctx.globalAlpha = Math.max(0, b.alpha);
+            ctx.fillStyle = b.color;
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px Courier New';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(b.name, 0, 46);
+            ctx.restore();
+        });
+
+        // Skull pile
+        vs.skulls.forEach(sk => {
+            ctx.save();
+            ctx.translate(sk.x, sk.y); ctx.rotate(sk.rotation); ctx.scale(sk.scale, sk.scale);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc( 3, -2, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(0, 3, 4, 0, Math.PI); ctx.stroke();
+            ctx.restore();
+        });
+
+        // Player
+        const rawC1 = SKINS[playerData.selectedSkin]?.color1 || '#4488ff';
+        const rawC2 = SKINS[playerData.selectedSkin]?.color2 || '#2266cc';
+        const sp = ['rainbow','fire','galaxy','holo','reactive','ultimate'];
+        const pc1 = sp.includes(rawC1) ? '#4488ff' : rawC1;
+        const pc2 = sp.includes(rawC2) ? '#2266cc' : rawC2;
+        const skullOff = vs.skulls.length > 0 ? 18 : 0;
+        const walkBob  = vs.player.walking ? Math.sin(t / 8) * 2 : 0;
+        const px = vs.player.x;
+        const py = vs.player.y - skullOff + walkBob;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.fillStyle = pc1; ctx.fillRect(-15, -7, 30, 15);
+        ctx.fillStyle = pc2; ctx.fillRect(8, -5, 15, 10);
+        if (!vs.player.walking && t >= 180) {
+            ctx.strokeStyle = pc1; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-24, -19); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(12,  -5); ctx.lineTo( 26, -19); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Speech bubble
+        if (vs.speechBubble.visible && vs.speechBubble.alpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = vs.speechBubble.alpha;
+            ctx.font = 'bold 14px Courier New';
+            const tw = ctx.measureText(vs.speechBubble.text).width;
+            const bw = tw + 20, bh = 30;
+            const rx = px - bw / 2, ry = py - 18 - bh - 10;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.roundRect(rx, ry, bw, bh, 8); ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(px - 7, ry + bh); ctx.lineTo(px + 7, ry + bh); ctx.lineTo(px, ry + bh + 10);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(vs.speechBubble.text, px, ry + bh / 2);
+            ctx.restore();
+        }
+
+        // Kill particles
+        for (const kp of killParticles) {
+            ctx.globalAlpha = kp.life / kp.maxLife;
+            ctx.fillStyle = kp.whiteFrames > 0 ? '#ffffff' : kp.color;
+            ctx.beginPath(); ctx.arc(kp.x, kp.y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Confetti
+        for (const c of vs.confetti) {
+            ctx.globalAlpha = c.life / c.maxLife;
+            ctx.fillStyle = c.color;
+            ctx.beginPath(); ctx.arc(c.x, c.y, 4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Text cascade
+        vs.textLines.forEach(line => {
+            if (line.alpha <= 0) return;
+            ctx.save();
+            ctx.globalAlpha = line.alpha;
+            ctx.translate(canvas.width / 2, line.y);
+            ctx.scale(line.scale, line.scale);
+            ctx.font = `bold ${line.size}px 'Courier New', monospace`;
+            ctx.fillStyle = line.color;
+            ctx.shadowColor = line.color; ctx.shadowBlur = 12;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillText(line.text, 0, 0);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        });
+
+        // Vignette
+        const vg = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width * 0.75);
+        vg.addColorStop(0, 'rgba(0,0,0,0)');
+        vg.addColorStop(1, 'rgba(0,0,0,0.5)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // ─── END VICTORY SEQUENCE ─────────────────────────────────────────────────
 
     function gameLoop() {
         update();
