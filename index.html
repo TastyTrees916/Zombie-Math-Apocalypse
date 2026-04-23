@@ -241,11 +241,12 @@
   }
 
   .game-frame {
-    width: 100%;
-    aspect-ratio: 4/3;
+    width: 800px;
+    height: 600px;
     border: none;
     display: block;
     background: #000;
+    transform-origin: top left;
   }
 
   .screen-glare {
@@ -607,6 +608,17 @@
     void yellDiv.offsetWidth;
     yellDiv.classList.add('pop');
   });
+
+  function scaleGame() {
+    const frame = document.querySelector('.game-frame');
+    const inner = document.querySelector('.screen-inner');
+    const available = inner.clientWidth;
+    const scale = Math.min(1, available / 800);
+    frame.style.transform = `scale(${scale})`;
+    inner.style.height = (600 * scale) + 'px';
+  }
+  scaleGame();
+  window.addEventListener('resize', scaleGame);
 </script>
 
 </body>
