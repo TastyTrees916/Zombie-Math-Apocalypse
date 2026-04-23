@@ -612,23 +612,14 @@
   function scaleGame() {
     const frame = document.querySelector('.game-frame');
     const inner = document.querySelector('.screen-inner');
-    const bezel = document.querySelector('.screen-bezel');
-    const body = document.querySelector('.cabinet-body');
-
-    // Account for all padding/border eating into the available width
-    // cabinet-body: 24px padding each side
-    // screen-bezel: 4px border + 14px padding each side = 36px each side
-    // Total horizontal overhead: (24+36)*2 = 120px
-    const overhead = 120;
-    const available = Math.min(body.clientWidth - overhead, 800);
-    const scale = available / 800;
-
+    const scale = inner.clientWidth / 800;
     frame.style.transform = `scale(${scale})`;
+    frame.style.width = '800px';
+    frame.style.height = '600px';
     inner.style.height = (600 * scale) + 'px';
   }
 
-  // Run after fonts/layout settle
-  setTimeout(scaleGame, 100);
+  setTimeout(scaleGame, 200);
   window.addEventListener('resize', scaleGame);
 </script>
 
