@@ -1,0 +1,2887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Math Shooter - Enhanced Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        #gameContainer {
+            position: relative;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #444;
+            background: #2a4a2a;
+            display: block;
+            cursor: crosshair;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ff4444;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+            color: white;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        #victory {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border: 4px solid #fff;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); }
+            50% { box-shadow: 0 0 70px rgba(255, 107, 53, 1); }
+            100% { box-shadow: 0 0 30px rgba(255, 107, 53, 0.8); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-5px, -5px); }
+            20%, 40%, 60%, 80% { transform: translate(5px, 5px); }
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -100% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes inputShake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .shake-input { animation: inputShake 0.3s; }
+
+        .damage-flash {
+            animation: shake 0.3s;
+        }
+        
+        #levelTransition {
+            border-color: #44ff44;
+            box-shadow: 0 0 20px rgba(68, 255, 68, 0.5);
+        }
+        
+        #weaponUpgrade {
+            border-color: #ffaa00;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.8);
+            background: linear-gradient(135deg, #ff8800, #ffaa00);
+        }
+        
+        input {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        input, button {
+            font-size: 18px;
+            padding: 10px 20px;
+            margin: 5px;
+            border: 2px solid #444;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #ff4444;
+        }
+        
+        button:hover {
+            background: #ff6666;
+        }
+        
+        .tab-button {
+            background: #444;
+            margin: 5px;
+            padding: 10px 20px;
+            border: 2px solid #666;
+        }
+
+        .tab-button.active {
+            background: #ff4444;
+            border-color: #ff6666;
+        }
+
+        .mode-opt {
+            background: #333;
+            border: 2px solid #666;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-family: 'Courier New', monospace;
+        }
+        .mode-opt:hover {
+            background: #444;
+            border-color: #aaa;
+        }
+        .mode-opt.selected {
+            background: #ff6b35;
+            border-color: #fff;
+        }
+        
+        .skin-item {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px;
+            border: 2px solid #666;
+            border-radius: 10px;
+            background: #2a2a2a;
+            cursor: pointer;
+            min-width: 120px;
+        }
+        
+        .skin-item.unlocked {
+            border-color: #44ff44;
+        }
+        
+        .skin-item.selected {
+            border-color: #ffaa00;
+            box-shadow: 0 0 15px #ffaa00;
+        }
+        
+        .skin-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .challenge-item {
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #666;
+            border-radius: 8px;
+            background: #2a2a2a;
+            text-align: left;
+        }
+        
+        .challenge-item.completed {
+            border-color: #44ff44;
+            background: #1a3a1a;
+        }
+        
+        #introScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1a1a;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #introScreen.hidden {
+            display: none;
+        }
+        
+        #bossWarning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+            display: none;
+            z-index: 50;
+            animation: pulse 0.5s infinite;
+        }
+        
+        #streakCounter {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffaa00;
+            text-shadow: 0 0 10px #ffaa00;
+            display: none;
+            z-index: 50;
+        }
+        
+        #feedback {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            display: none;
+            z-index: 50;
+            text-shadow: 0 0 20px currentColor;
+        }
+        
+        #mathTip {
+            font-size: 14px;
+            color: #aaaaaa;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        .menu-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background: #444;
+            border: 2px solid #666;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .menu-btn:hover {
+            background: #555;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: 2px solid #666;
+            color: #aaa;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .modal-close-btn:hover {
+            color: #fff;
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="introScreen">
+        <div style="background: linear-gradient(135deg, #ff6b35, #f7931e); border: 4px solid #fff; border-radius: 20px; padding: 40px; text-align: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); max-width: 600px; animation: pulse 2s infinite;">
+            <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">🧟‍♂️ ZOMBIE MATH APOCALYPSE 🧮</div>
+            <div style="font-size: 18px; line-height: 1.6; margin-bottom: 25px;">
+                YO FAM! 💀 The situation is absolutely NOT BUSSIN right now! All the math teachers have been turned into ZOMBIES by evil geometric shapes that are totally sus! 😱
+                <br><br>
+                These shapes are straight up CRINGE and they're controlling all the teachers with their mid energy! The only way to break their spell is by solving math problems and defeating each boss shape! 
+                <br><br>
+                If you can survive all 9 levels and defeat the MEGA FINAL BOSS, you can go home and play FortBlox and Ronite again! No cap! 🎮
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #ffcc00;">📚 PICK YOUR MATH MODE:</div>
+                <div id="modeSelector" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 8px;">
+                    <button class="mode-opt selected" data-mode="multiply">✖️ Multiply Only</button>
+                    <button class="mode-opt" data-mode="divide">➗ Division Only</button>
+                    <button class="mode-opt" data-mode="mixed">🔀 Mixed Set</button>
+                    <button class="mode-opt" data-mode="hard">🔥 Hard Mode</button>
+                </div>
+                <div id="modeDesc" style="font-size: 13px; color: #ccc; min-height: 18px;">Pure multiplication — times tables only!</div>
+            </div>
+            
+            <button id="startGame" style="font-size: 24px; padding: 15px 30px; background: #fff; color: #ff6b35; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">LET'S GOOO! 🚀</button>
+            <div id="loadSaveSection" style="display: none; margin-top: 15px;">
+                <button id="loadSaveBtn" style="font-size: 18px; padding: 12px 24px; background: #228822; color: #fff; border: 2px solid #44ff44; border-radius: 10px; cursor: pointer;">📂 CONTINUE SAVED GAME</button>
+                <div id="loadSaveInfo" style="font-size: 14px; color: #ffe; margin-top: 6px;"></div>
+            </div>
+            <div id="introHighScore" style="margin-top:12px;font-size:15px;color:#ffe;opacity:0.8;"></div>
+        </div>
+    </div>
+
+    <div id="controlsScreen" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1a1a1a;z-index:999;display:none;justify-content:center;align-items:center;">
+      <div style="background:linear-gradient(135deg,#1a3a5c,#0d1f33);border:3px solid #4488ff;border-radius:20px;padding:40px;max-width:560px;color:white;text-align:center;">
+        <div style="font-size:28px;font-weight:bold;margin-bottom:20px;">HOW TO PLAY 🎮</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-bottom:20px;font-size:16px;line-height:2;">
+          <div style="color:#aaa;">WASD</div><div>Move</div>
+          <div style="color:#aaa;">Mouse</div><div>Aim</div>
+          <div style="color:#aaa;">Click</div><div>Shoot</div>
+          <div style="color:#aaa;">Hold (SMG/Minigun)</div><div>Auto-fire</div>
+          <div style="color:#aaa;">ESC</div><div>Pause</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:15px;margin-bottom:20px;text-align:left;font-size:14px;line-height:2;color:#ddd;">
+          💡 Shoot zombies 3 times to trigger a MATH PROBLEM 🧮<br>
+          ✅ Answer correctly to eliminate the zombie!<br>
+          💀 Wrong answers cost 1 HP — think before you submit!<br>
+          👊 Defeat the BOSS every 5 correct answers to level up!<br>
+          🎨 Check MENU → View Progress for SKINS and CHALLENGES!
+        </div>
+        <div style="font-size:13px;color:#aaa;margin-bottom:15px;">Starting in <span id="controlsCountdown">5</span>s...</div>
+        <button id="controlsGotIt" style="font-size:18px;padding:12px 28px;background:#4488ff;color:white;border:none;border-radius:10px;cursor:pointer;">GOT IT! LET'S GO! →</button>
+      </div>
+    </div>
+
+    <div id="gameContainer">
+        <button class="menu-btn" id="menuBtn">☰ MENU</button>
+        
+        <div id="ui">
+            <div>Score: <span id="score">0</span></div>
+            <div>HP: <span id="lives">5</span></div>
+            <div>Level: <span id="level">1</span></div>
+            <div>Weapon: <span id="weaponName">Pistol</span></div>
+            <div>Correct: <span id="correctCount">0</span></div>
+            <div style="margin-top: 10px; font-size: 24px; color: #ffaa00;">
+                Streak: <span id="streakDisplay">0</span> 🔥
+            </div>
+            <div style="margin-top: 5px; font-size: 14px; color: #aaaaaa;">
+                Next boss: <span id="nextUpgrade">5</span> correct
+            </div>
+            <div id="shieldBar" style="display:none;margin-top:8px;font-size:13px;">
+              🛡️ SHIELD
+              <div style="width:120px;height:8px;background:#333;border-radius:4px;margin-top:2px;">
+                <div id="shieldBarFill" style="height:8px;background:#00aaff;border-radius:4px;width:100%;"></div>
+              </div>
+            </div>
+            <div id="slowBar" style="display:none;margin-top:6px;font-size:13px;">
+              ⏱️ SLOW-MO
+              <div style="width:120px;height:8px;background:#333;border-radius:4px;margin-top:2px;">
+                <div id="slowBarFill" style="height:8px;background:#ff00ff;border-radius:4px;width:100%;"></div>
+              </div>
+            </div>
+        </div>
+        
+        <div id="bossWarning">⚠️ BOSS CHARGING! ⚠️</div>
+        <div id="streakCounter"></div>
+        <div id="feedback"></div>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="mathModal" class="modal">
+            <button class="modal-close-btn" id="closeMathX">✕</button>
+            <div id="mathProblem" style="font-size: 24px; margin-bottom: 20px; color: #ffaa00;">5 × 7 = ?</div>
+            <div id="mathTip" style="font-size: 14px; color: #aaaaaa; margin-bottom: 15px;"></div>
+            <input type="number" id="mathInput" placeholder="Answer">
+            <button id="mathSubmit">Submit Answer</button>
+            <div id="mathFeedback" style="margin-top: 15px; font-size: 18px; display: none;"></div>
+        </div>
+
+        <div id="weaponUpgrade" class="modal">
+            <div style="font-size: 48px; margin-bottom: 20px;">🎉 WEAPON UPGRADE! 🎉</div>
+            <div id="weaponUpgradeTitle" style="font-size: 32px; margin-bottom: 15px; color: #fff;">SHOTGUN UNLOCKED!</div>
+            <div id="weaponUpgradeDesc" style="font-size: 18px; margin-bottom: 20px;">Fires 3 bullets at once!</div>
+            <div id="upgradeCountdown" style="font-size: 48px; margin: 20px 0; color: #fff;">3</div>
+            <button id="skipUpgradeBtn" style="margin-top:10px;display:none;">TAP TO CONTINUE →</button>
+        </div>
+
+        <div id="levelTransition" class="modal">
+            <div id="levelTitle" style="font-size: 24px; margin-bottom: 20px; color: #44ff44;">LEVEL 2 UNLOCKED!</div>
+            <div id="levelMessage">You're progressing!</div>
+            <div id="levelStats" style="margin: 20px 0; font-size: 16px;"></div>
+            <div id="countdown" style="font-size: 48px; margin: 20px 0; color: #ffaa00;">3</div>
+        </div>
+
+        <div id="victory" class="modal">
+            <div style="font-size: 32px; margin-bottom: 20px;">🏆 VICTORY! 🏆</div>
+            <div style="font-size: 24px; margin-bottom: 15px;">YOOO YOU'RE LITERALLY INSANE! 🤯</div>
+            <div style="font-size: 18px; margin-bottom: 20px;">You absolutely DESTROYED every zombie and boss with your BIG BRAIN ENERGY! 🧠⚡ Your math skills are straight up LEGENDARY! You're built different, bestie! 💯🔥👑
+            <br><br>
+            You sent all those cringe zombie shapes straight to Skibidi, Ohio where they belong! The teachers are free and you can finally go home to play some FortBlox and Ronite! Time to touch grass and live your best life! 🎮✨</div>
+            <div id="unlockedReward" style="margin: 20px 0; font-size: 20px; color: #ffaa00;"></div>
+            <div style="font-size: 16px;">Final Score: <span id="victoryScore">0</span></div>
+            <button id="victoryRestart">PLAY AGAIN!</button>
+        </div>
+        
+        <div id="gameOver" class="modal">
+            <h2>Game Over!</h2>
+            <div>Final Score: <span id="finalScore">0</span></div>
+            <div>Zombies Defeated: <span id="zombiesKilled">0</span></div>
+            <div id="continueSection" style="margin: 20px 0;">
+                <button id="continueBtn" style="background: #228822; font-size: 20px; padding: 12px 24px;">⚡ CONTINUE! (1 left)</button>
+                <div style="font-size: 13px; color: #aaa; margin-top: 6px;">Resumes at Level <span id="continueLevelHint">1</span> with 3 HP</div>
+            </div>
+            <button id="restartBtn">Play Again</button>
+        </div>
+        
+        <div id="pauseModal" class="modal">
+            <button class="modal-close-btn" id="closePauseX">✕</button>
+            <h2>⏸️ PAUSED</h2>
+            <div style="margin: 20px 0; font-size: 18px;">Game is paused. Take a breather!</div>
+            <div style="margin: 15px 0;">
+                <label style="display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="godModeToggle" style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="font-size: 16px;">God Mode (Testing Only)</span>
+                </label>
+            </div>
+            <button id="resumeBtn">Resume Game</button>
+            <button id="musicToggleBtn">🎵 MUSIC: ON</button>
+            <button id="viewProgressBtn2" style="background: #4488ff;">View Progress 📊</button>
+            <button id="quitBtn">Quit to Menu</button>
+        </div>
+        
+        <div id="progressModal" class="modal">
+            <button class="modal-close-btn" id="closeProgressX">✕</button>
+            <h2>📊 YOUR PROGRESS</h2>
+            
+            <div style="margin: 20px 0;">
+                <button class="tab-button active" id="skinsTab">SKINS</button>
+                <button class="tab-button" id="challengesTab">CHALLENGES</button>
+                <button class="tab-button" id="statsTab">STATS</button>
+                <button class="tab-button" id="effectsTab">EFFECTS</button>
+            </div>
+            
+            <div id="skinsPanel">
+                <h3>🎨 UNLOCKED SKINS</h3>
+                <div id="skinsList"></div>
+            </div>
+            
+            <div id="challengesPanel" style="display: none;">
+                <h3>🏆 CHALLENGES</h3>
+                <div id="challengesList"></div>
+            </div>
+            
+            <div id="statsPanel" style="display: none;">
+                <h3>📈 YOUR STATS</h3>
+                <div id="statsDisplay"></div>
+            </div>
+            
+            <div id="effectsPanel" style="display:none;">
+                <h3>✨ EFFECTS</h3>
+                <div id="effectsList"></div>
+            </div>
+
+            <button id="closeProgressBtn" style="margin-top: 20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <script>
+window.addEventListener('load', function() {
+    console.log('🎮 Zombie Math Shooter Loading...');
+
+    const NOTE = {
+      C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196.00,A3:220.00,B3:246.94,
+      C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392.00,A4:440.00,B4:493.88,
+      C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880.00,B5:987.77,
+      C6:1046.50
+    };
+    const MR = 0;
+
+    const LEVEL_MUSIC = [
+      // Level 1 - "Green Zone"
+      {
+        lead: [NOTE.E5,NOTE.E5,NOTE.A5,MR,NOTE.A5,MR,NOTE.E5,NOTE.D5,NOTE.E5,MR,NOTE.C5,NOTE.D5,NOTE.E5,NOTE.A4,MR,NOTE.A4,NOTE.G5,NOTE.G5,NOTE.C5,MR,NOTE.C5,MR,NOTE.G5,NOTE.F5,NOTE.G5,MR,NOTE.E5,NOTE.F5,NOTE.G5,NOTE.E5,MR,MR],
+        bass: [NOTE.A3,MR,NOTE.A3,MR,NOTE.G3,MR,NOTE.G3,MR,NOTE.C3,MR,NOTE.C3,MR,NOTE.D3,MR,NOTE.E3,MR]
+      },
+      // Level 2 - "Desert Heat"
+      {
+        lead: [NOTE.A5,NOTE.G5,NOTE.A5,NOTE.E5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.E5,NOTE.D5,NOTE.C5,NOTE.D5,NOTE.C5,NOTE.B4,NOTE.A4,NOTE.C5,NOTE.B4,NOTE.C5,NOTE.G4,NOTE.C5,NOTE.B4,NOTE.A4,NOTE.G4,NOTE.E5,MR,NOTE.E5,MR,NOTE.A4,NOTE.B4,NOTE.C5,MR],
+        bass: [NOTE.A3,MR,NOTE.A3,NOTE.E3,NOTE.F3,MR,NOTE.F3,MR,NOTE.G3,MR,NOTE.G3,NOTE.D3,NOTE.E3,MR,NOTE.A3,MR]
+      },
+      // Level 3 - "Void Pulse"
+      {
+        lead: [NOTE.E5,MR,NOTE.D5,MR,NOTE.C5,MR,NOTE.B4,MR,NOTE.A4,NOTE.B4,NOTE.C5,NOTE.B4,NOTE.A4,MR,NOTE.G4,MR,NOTE.F5,MR,NOTE.E5,MR,NOTE.D5,MR,NOTE.C5,NOTE.B4,NOTE.A4,NOTE.G4,NOTE.A4,MR,NOTE.E5,MR,MR,MR],
+        bass: [NOTE.E3,MR,NOTE.E3,MR,NOTE.D3,MR,NOTE.D3,MR,NOTE.C3,MR,NOTE.C3,MR,NOTE.G3,MR,NOTE.A3,MR]
+      },
+      // Level 4 - "Purple Blitz"
+      {
+        lead: [NOTE.C5,NOTE.D5,NOTE.E5,NOTE.F5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.E5,NOTE.F5,NOTE.G5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,MR,NOTE.A4,NOTE.B4,NOTE.C5,NOTE.D5,NOTE.E5,NOTE.D5,NOTE.C5,NOTE.B4,NOTE.C5,MR,NOTE.G5,MR,NOTE.E5,NOTE.D5,NOTE.C5,MR],
+        bass: [NOTE.C3,MR,NOTE.G3,MR,NOTE.A3,MR,NOTE.F3,MR,NOTE.C3,MR,NOTE.G3,NOTE.G3,NOTE.A3,MR,NOTE.E3,MR]
+      },
+      // Level 5 - "Azure Storm"
+      {
+        lead: [NOTE.G5,NOTE.G5,NOTE.G5,NOTE.E5,NOTE.G5,NOTE.A5,NOTE.G5,NOTE.E5,NOTE.D5,NOTE.D5,NOTE.D5,NOTE.B4,NOTE.D5,NOTE.E5,NOTE.D5,NOTE.B4,NOTE.C5,NOTE.E5,NOTE.G5,NOTE.C5,NOTE.B4,NOTE.G4,NOTE.A4,NOTE.B4,NOTE.C5,MR,MR,MR,NOTE.G5,NOTE.F5,NOTE.E5,MR],
+        bass: [NOTE.C3,MR,NOTE.C3,NOTE.C3,NOTE.G3,MR,NOTE.G3,MR,NOTE.A3,MR,NOTE.A3,MR,NOTE.F3,NOTE.G3,NOTE.A3,MR]
+      },
+      // Level 6 - "Crimson Rush"
+      {
+        lead: [NOTE.E5,NOTE.G5,NOTE.E5,NOTE.G5,NOTE.A5,NOTE.G5,NOTE.E5,NOTE.D5,NOTE.E5,NOTE.G5,NOTE.E5,NOTE.G5,NOTE.B5,MR,NOTE.A5,MR,NOTE.G5,NOTE.B5,NOTE.G5,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.F5,NOTE.A5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.E5,MR],
+        bass: [NOTE.E3,NOTE.E3,NOTE.A3,MR,NOTE.E3,NOTE.E3,NOTE.G3,MR,NOTE.D3,NOTE.D3,NOTE.G3,MR,NOTE.A3,MR,NOTE.B3,MR]
+      },
+      // Level 7 - "Stellar Command"
+      {
+        lead: [NOTE.D5,NOTE.D5,NOTE.A5,NOTE.A5,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,MR,NOTE.E5,MR,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.D5,NOTE.G5,NOTE.G5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.F5,MR,NOTE.F5,MR,NOTE.A5,NOTE.G5,NOTE.F5,MR],
+        bass: [NOTE.D3,MR,NOTE.D3,MR,NOTE.A3,MR,NOTE.G3,MR,NOTE.E3,MR,NOTE.A3,MR,NOTE.D3,NOTE.E3,NOTE.F3,MR]
+      },
+      // Level 8 - "Navy Nightmare"
+      {
+        lead: [NOTE.A4,NOTE.C5,NOTE.E5,NOTE.C5,NOTE.A4,NOTE.C5,NOTE.E5,NOTE.G5,NOTE.F5,NOTE.D5,NOTE.B4,NOTE.D5,NOTE.F5,NOTE.D5,NOTE.B4,MR,NOTE.E5,NOTE.G5,NOTE.B5,NOTE.G5,NOTE.E5,NOTE.G5,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.C5,MR,NOTE.E5,MR],
+        bass: [NOTE.A3,MR,NOTE.A3,NOTE.E3,NOTE.F3,NOTE.F3,NOTE.C3,MR,NOTE.D3,MR,NOTE.D3,NOTE.A3,NOTE.E3,NOTE.G3,NOTE.A3,MR]
+      },
+      // Level 9 - "Final Sigma"
+      {
+        lead: [NOTE.E5,NOTE.A5,NOTE.E5,NOTE.A5,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.F5,NOTE.G5,NOTE.A5,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.E5,NOTE.G5,NOTE.B5,NOTE.G5,NOTE.B5,NOTE.C6,NOTE.B5,NOTE.A5,NOTE.G5,NOTE.A5,NOTE.G5,NOTE.F5,NOTE.E5,NOTE.D5,NOTE.E5,NOTE.A5,MR],
+        bass: [NOTE.A3,NOTE.A3,NOTE.E3,NOTE.E3,NOTE.F3,NOTE.F3,NOTE.C3,NOTE.C3,NOTE.D3,NOTE.D3,NOTE.A3,NOTE.A3,NOTE.E3,NOTE.G3,NOTE.A3,MR]
+      }
+    ];
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Initialize audio
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    let leadMusicGain = audioContext.createGain(); leadMusicGain.gain.value = 0.08;
+    let bassMusicGain = audioContext.createGain(); bassMusicGain.gain.value = 0.06;
+    leadMusicGain.connect(audioContext.destination);
+    bassMusicGain.connect(audioContext.destination);
+
+    function playSound(type) {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        if (type === 'shoot') {
+            osc.frequency.value = 400;
+            gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.1);
+        } else if (type === 'correct') {
+            osc.frequency.value = 600;
+            gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.2);
+        } else if (type === 'wrong') {
+            osc.frequency.value = 200;
+            gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.2);
+        } else if (type === 'powerup') {
+            osc.frequency.value = 800;
+            gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.2);
+        }
+    }
+    
+    // Weapon definitions
+    const WEAPONS = {
+        pistol:     { name: 'Pistol',       bullets: 1, spread: 0,    cooldown: 15, color: '#ffff00', damage: 1, piercing: true },
+        shotgun:    { name: 'Shotgun',       bullets: 3, spread: 0.4,  cooldown: 25, color: '#ff8800', damage: 1, knockback: 30 },
+        rifle:      { name: 'Rifle',         bullets: 1, spread: 0,    cooldown: 8,  color: '#00ff00', damage: 1, chargeable: true },
+        burstRifle: { name: 'Burst Rifle',   bullets: 1, spread: 0,    cooldown: 25, color: '#00aaff', damage: 2 },
+        smg:        { name: 'SMG',           bullets: 1, spread: 0.2,  cooldown: 5,  color: '#ff00ff', damage: 1 },
+        minigun:    { name: 'Minigun',       bullets: 2, spread: 0.25, cooldown: 3,  color: '#ff0000', damage: 1 },
+        sniper:     { name: 'Sniper',        bullets: 1, spread: 0,    cooldown: 40, color: '#ffffff', damage: 3, zoom: true, piercing: true },
+        plasma:     { name: 'Plasma Cannon', bullets: 5, spread: 0.5,  cooldown: 30, color: '#00ffff', damage: 2, slowOnHit: true },
+        ultimate:   { name: 'MEGA BLASTER',  bullets: 8, spread: 0.6,  cooldown: 20, color: '#ffaa00', damage: 2, explosive: true }
+    };
+    
+    const WEAPON_ORDER = ['pistol', 'shotgun', 'rifle', 'burstRifle', 'smg', 'minigun', 'sniper', 'plasma', 'ultimate'];
+    
+    // Game state
+    let gameRunning = false;
+    let gamePaused = false;
+    let godMode = false;
+    let gameMode = 'multiply';
+    let score = 0;
+    let lives = 5;
+    let currentLevel = 1;
+    let zombiesKilled = 0;
+    let correctAnswers = 0;
+    let totalCorrectAnswers = 0;
+    let totalQuestions = 0;
+    let currentZombie = null;
+    let currentAnswer = 0;
+    let currentProblem = '';
+    let weaponIndex = 0;
+    let weapon = 'pistol';
+    let hitsSinceQuestion = 0;
+    let mathPromptCooldown = 0;
+    let streak = 0;
+    let bestStreak = 0;
+    let shootCooldown = 0;
+    let mouseDown = false;
+    let burstCount = 0;
+    let burstDelay = 0;
+    let continueUsed = false;
+    let shieldActive = false;
+    let shieldTimer = 0;
+    let slowMoActive = false;
+    let slowMoTimer = 0;
+    let zombieSpawnTimer = 0;
+    let clickFired = false;
+    let chargeStart = 0;
+    let spinupFrames = 0;
+    let explosions = [];
+    let bossActive = false;
+    let boss = null;
+    let invulnerableTimer = 0;
+    let zombieKillsForHealth = 0;
+    let screenShake = 0;
+    let musicEnabled = true;
+    let leadNoteIdx = 0, bassNoteIdx = 0;
+    let nextLeadTime = 0, nextBassTime = 0;
+    let musicSchedulerInterval = null;
+    let musicStarted = false;
+
+    // Game entities
+    let bullets = [];
+    let zombies = [];
+    let killParticles = [];
+    let powerups = [];
+    let healthPickups = [];
+    let player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        size: 15,
+        speed: 1.5,
+        angle: 0
+    };
+    
+    const keys = {};
+    let mouseX = canvas.width / 2;
+    let mouseY = canvas.height / 2;
+    
+    // Progress data
+    let playerData = {
+        highScore: 0,
+        maxLevel: 1,
+        bestStreak: 0,
+        totalZombies: 0,
+        totalCorrect: 0,
+        totalQuestions: 0,
+        gameBeaten: false,
+        hardModeBeaten: 0,
+        timesBeaten: 0,
+        selectedSkin: 'default',
+        unlockedSkins: ['default'],
+        unlockedEffects: [],
+        selectedEffects: []
+    };
+    
+    const SKINS = {
+        default: { name: 'Default', color1: '#4488ff', color2: '#66aaff', requirement: 'Starter skin' },
+        red: { name: 'Crimson', color1: '#ff4444', color2: '#ff6666', requirement: 'Beat Level 3', check: (d) => d.maxLevel >= 3 },
+        gold: { name: 'Golden', color1: '#ffaa00', color2: '#ffcc00', requirement: 'Score 1000+', check: (d) => d.highScore >= 1000 },
+        purple: { name: 'Royal Purple', color1: '#8844ff', color2: '#aa66ff', requirement: 'Beat Level 5', check: (d) => d.maxLevel >= 5 },
+        cyan: { name: 'Ice Blue', color1: '#44ffff', color2: '#66ffff', requirement: '5 Streak', check: (d) => d.bestStreak >= 5 },
+        lime: { name: 'Toxic Green', color1: '#88ff44', color2: '#aaff66', requirement: 'Beat Level 7', check: (d) => d.maxLevel >= 7 },
+        silver: { name: 'Silver Chrome', color1: '#c0c0c0', color2: '#e8e8e8', requirement: 'Beat Game Once', check: (d) => d.gameBeaten },
+        platinum: { name: 'Platinum', color1: '#e5e4e2', color2: '#ffffff', requirement: 'Beat Game Once', check: (d) => d.timesBeaten >= 1 },
+        rainbow: { name: 'Prism', color1: 'rainbow', color2: 'rainbow', requirement: 'Beat Game Twice', check: (d) => d.timesBeaten >= 2 },
+        fire: { name: 'Inferno', color1: 'fire', color2: 'fire', requirement: '10 Streak', check: (d) => d.bestStreak >= 10 },
+        holo: { name: 'Holographic', color1: 'holo', color2: 'holo', requirement: 'Beat Game on Hard Mode', check: (d) => (d.hardModeBeaten || 0) >= 1 },
+        galaxy: { name: 'Cosmic', color1: 'galaxy', color2: 'galaxy', requirement: 'Beat Game 3 Times', check: (d) => d.timesBeaten >= 3 },
+        reactive: { name: 'Reactive Pulse', color1: 'reactive', color2: 'reactive', requirement: 'Beat Hard Mode Twice', check: (d) => (d.hardModeBeaten || 0) >= 2 },
+        ultimate: { name: 'Ultimate Omega', color1: 'ultimate', color2: 'ultimate', requirement: 'Beat Game 4 Times', check: (d) => d.timesBeaten >= 4 },
+        neon: { name: 'Neon', color1: '#00ffcc', color2: '#00ff66', requirement: '15 answer streak', check: (d) => d.bestStreak >= 15 },
+        ghost: { name: 'Ghost', color1: '#aaaaff', color2: '#ffffff', requirement: 'Beat Hard Mode 3 Times', check: (d) => (d.hardModeBeaten || 0) >= 3 }
+    };
+    
+    const CHALLENGES = [
+        { id: 'level3', name: 'Desert Survivor', desc: 'Beat Level 3', reward: 'red', check: (d) => d.maxLevel >= 3 },
+        { id: 'score1000', name: 'Point Master', desc: 'Score 1000+ points', reward: 'gold', check: (d) => d.highScore >= 1000 },
+        { id: 'level5', name: 'Polygon Crusher', desc: 'Beat Level 5', reward: 'purple', check: (d) => d.maxLevel >= 5 },
+        { id: 'streak5', name: 'On Fire', desc: 'Get a 5 answer streak', reward: 'cyan', check: (d) => d.bestStreak >= 5 },
+        { id: 'level7', name: 'Star Destroyer', desc: 'Beat Level 7', reward: 'lime', check: (d) => d.maxLevel >= 7 },
+        { id: 'streak10', name: 'Unstoppable', desc: 'Get a 10 answer streak', reward: 'fire', check: (d) => d.bestStreak >= 10 },
+        { id: 'beatgame', name: 'Math Legend', desc: 'Beat all 9 levels', reward: 'silver', check: (d) => d.gameBeaten },
+        { id: 'beat3', name: 'Veteran', desc: 'Beat game once', reward: 'platinum', check: (d) => d.timesBeaten >= 1 },
+        { id: 'beat5', name: 'Elite', desc: 'Beat game twice', reward: 'rainbow', check: (d) => d.timesBeaten >= 2 },
+        { id: 'beathard', name: 'Ultimate Champion', desc: 'Beat game on Hard Mode', reward: 'holo', check: (d) => (d.hardModeBeaten || 0) >= 1 },
+        { id: 'beat10', name: 'Master', desc: 'Beat game 3 times', reward: 'galaxy', check: (d) => d.timesBeaten >= 3 },
+        { id: 'beat15', name: 'Grandmaster', desc: 'Beat Hard Mode twice', reward: 'reactive', check: (d) => (d.hardModeBeaten || 0) >= 2 },
+        { id: 'beat25', name: 'Omega Legend', desc: 'Beat game 4 times', reward: 'ultimate', check: (d) => d.timesBeaten >= 4 },
+        { id: 'streak15', name: 'Streak Machine', desc: 'Get a 15 answer streak', reward: 'neon', check: (d) => d.bestStreak >= 15 },
+        { id: 'streak20', name: 'On Another Level', desc: 'Get a 5 answer streak', reward: 'bulletTrail', check: (d) => d.bestStreak >= 5 },
+        { id: 'streak25', name: 'Math God', desc: 'Get a 10 answer streak', reward: 'deathNova', check: (d) => d.bestStreak >= 10 },
+        { id: 'streak30', name: 'Untouchable', desc: 'Beat Hard Mode 3 times', reward: 'ghost', check: (d) => (d.hardModeBeaten || 0) >= 3 }
+    ];
+    
+    const levelConfig = {
+        1: { bg: '#1a3a1a', zombieColor: 'hsl(120, 70%, 30%)' },
+        2: { bg: '#3a3a1a', zombieColor: 'hsl(60, 70%, 30%)' },
+        3: { bg: '#1a1a1a', zombieColor: 'hsl(0, 70%, 30%)' },
+        4: { bg: '#2a1a3a', zombieColor: 'hsl(280, 70%, 30%)' },
+        5: { bg: '#1a2a3a', zombieColor: 'hsl(200, 70%, 30%)' },
+        6: { bg: '#3a1a2a', zombieColor: 'hsl(340, 70%, 30%)' },
+        7: { bg: '#2a3a1a', zombieColor: 'hsl(80, 70%, 30%)' },
+        8: { bg: '#1a1a3a', zombieColor: 'hsl(240, 70%, 30%)' },
+        9: { bg: '#3a1a1a', zombieColor: 'hsl(20, 70%, 30%)' }
+    };
+    
+    const levelMessages = {
+        2: "Bestie you made it to the Desert of Equations! 🏜️ Keep slaying! 💪",
+        3: "Welcome to the Void of Variables! Your algebra game is bussin! 🕳️",
+        4: "Purple Polygons dimension unlocked! You're cracked at this! 💜",
+        5: "Azure Algorithms activated! Time to get griddy! 🔷",
+        6: "Crimson Calculations realm entered! Show them who's boss! 🔴",
+        7: "Stellar Statistics zone achieved! Your IQ is over 9000! ⭐",
+        8: "Navy Numbers nightmare mode! Time to go feral! 🟦",
+        9: "FINAL DIMENSION! Show this boss who's the real sigma! 🌟"
+    };
+    
+    // Load/Save progress
+    function loadProgress() {
+        try {
+            const saved = localStorage.getItem('zombieMathProgress');
+            if (saved) {
+                playerData = JSON.parse(saved);
+                if (!playerData.unlockedSkins) playerData.unlockedSkins = ['default'];
+                if (!playerData.selectedSkin) playerData.selectedSkin = 'default';
+                if (!playerData.selectedEffects) playerData.selectedEffects = [];
+                if (!playerData.unlockedEffects) playerData.unlockedEffects = [];
+                if (playerData.hardModeBeaten === true) playerData.hardModeBeaten = 1;
+                if (!playerData.hardModeBeaten) playerData.hardModeBeaten = 0;
+                checkUnlocks();
+            }
+        } catch(e) {}
+    }
+    
+    function saveProgress() {
+        try {
+            localStorage.setItem('zombieMathProgress', JSON.stringify(playerData));
+        } catch(e) {}
+    }
+
+    function saveGame() {
+        try {
+            const saveData = {
+                currentLevel,
+                score,
+                correctAnswers,
+                weaponIndex,
+                weapon,
+                gameMode,
+                continueUsed,
+                savedAt: Date.now()
+            };
+            localStorage.setItem('zombieMathSave', JSON.stringify(saveData));
+        } catch(e) {}
+    }
+
+    function getSavedGame() {
+        try {
+            const saved = localStorage.getItem('zombieMathSave');
+            return saved ? JSON.parse(saved) : null;
+        } catch(e) { return null; }
+    }
+
+    function clearSavedGame() {
+        localStorage.removeItem('zombieMathSave');
+    }
+
+    function showLoadSaveButton() {
+        const save = getSavedGame();
+        if (save) {
+            document.getElementById('loadSaveSection').style.display = 'block';
+            const when = new Date(save.savedAt).toLocaleDateString();
+            const modeLabel = { multiply: 'Multiply', divide: 'Division', mixed: 'Mixed', hard: 'HARD MODE' };
+            document.getElementById('loadSaveInfo').textContent =
+                `Level ${save.currentLevel} | Score ${save.score} | ${modeLabel[save.gameMode] || (save.hardMode ? 'HARD MODE' : 'Multiply')} — saved ${when}`;
+        } else {
+            document.getElementById('loadSaveSection').style.display = 'none';
+        }
+        document.getElementById('introHighScore').textContent =
+            playerData.highScore > 0 ? '🏆 Best Score: ' + playerData.highScore : '';
+    }
+    
+    function checkUnlocks() {
+        CHALLENGES.forEach(challenge => {
+            if (challenge.check(playerData) && SKINS[challenge.reward] && !playerData.unlockedSkins.includes(challenge.reward)) {
+                playerData.unlockedSkins.push(challenge.reward);
+                playSound('powerup');
+            }
+        });
+        if (!playerData.unlockedEffects) playerData.unlockedEffects = [];
+        if (playerData.bestStreak >= 5 && !playerData.unlockedEffects.includes('bulletTrail'))
+            playerData.unlockedEffects.push('bulletTrail');
+        if (playerData.bestStreak >= 10 && !playerData.unlockedEffects.includes('deathNova'))
+            playerData.unlockedEffects.push('deathNova');
+    }
+    
+    loadProgress();
+    
+    // Event listeners
+    document.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.key === 'ArrowUp') keys['w'] = true;
+        if (e.key === 'ArrowDown') keys['s'] = true;
+        if (e.key === 'ArrowLeft') keys['a'] = true;
+        if (e.key === 'ArrowRight') keys['d'] = true;
+        if (e.key === 'Escape' && gameRunning && !gamePaused) {
+            gamePaused = true;
+ document.getElementById('pauseModal').style.display = 'block';
+        }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+        if (e.key === 'ArrowUp') keys['w'] = false;
+        if (e.key === 'ArrowDown') keys['s'] = false;
+        if (e.key === 'ArrowLeft') keys['a'] = false;
+        if (e.key === 'ArrowRight') keys['d'] = false;
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+    });
+    
+    canvas.addEventListener('mousedown', () => {
+        mouseDown = true;
+        if ((weapon === 'rifle' || weapon === 'sniper') && gameRunning && !gamePaused) {
+            chargeStart = Date.now();
+        }
+    });
+    canvas.addEventListener('mouseup', () => {
+        mouseDown = false;
+        clickFired = false;
+        spinupFrames = 0;
+        if (gameRunning && !gamePaused && shootCooldown <= 0) {
+            if (weapon === 'rifle' && chargeStart > 0) {
+                const held = Math.min(500, Date.now() - chargeStart);
+                const chargeDamage = Math.max(1, Math.min(3, Math.round(held / 166)));
+                shoot(chargeDamage);
+                shootCooldown = WEAPONS[weapon].cooldown;
+            } else if (weapon === 'sniper' && chargeStart > 0) {
+                shoot();
+                shootCooldown = WEAPONS[weapon].cooldown;
+            }
+        }
+        chargeStart = 0;
+    });
+    canvas.addEventListener('mouseleave', () => {
+        mouseDown = false;
+        clickFired = false;
+        chargeStart = 0;
+        spinupFrames = 0;
+    });
+    
+    const modeDescriptions = {
+        multiply: 'Pure multiplication — times tables only!',
+        divide: 'Division problems only — no multiplication!',
+        mixed: 'A mix of × and ÷, one type per question.',
+        hard: '🔥 Both in one: A × B ÷ C — multiply first, then divide!'
+    };
+    document.querySelectorAll('.mode-opt').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.mode-opt').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            gameMode = this.dataset.mode;
+            document.getElementById('modeDesc').textContent = modeDescriptions[gameMode] || '';
+        });
+    });
+
+    document.getElementById('startGame').addEventListener('click', function() {
+        document.getElementById('introScreen').classList.add('hidden');
+        if (!musicStarted) {
+            musicStarted = true;
+            leadNoteIdx = 0; bassNoteIdx = 0;
+            nextLeadTime = audioContext.currentTime + 0.1;
+            nextBassTime = audioContext.currentTime + 0.1;
+            musicSchedulerInterval = setInterval(scheduleMusic, 200);
+            scheduleMusic();
+        }
+        if (!localStorage.getItem('zombieMathControlsSeen')) {
+            document.getElementById('controlsScreen').style.display = 'flex';
+            let cd = 5;
+            const cdEl = document.getElementById('controlsCountdown');
+            const cdInterval = setInterval(() => {
+                cd--;
+                cdEl.textContent = cd;
+                if (cd <= 0) { clearInterval(cdInterval); dismissControls(); }
+            }, 1000);
+            function dismissControls() {
+                localStorage.setItem('zombieMathControlsSeen', '1');
+                document.getElementById('controlsScreen').style.display = 'none';
+                gameRunning = true;
+                totalCorrectAnswers = 0;
+                totalQuestions = 0;
+            }
+            document.getElementById('controlsGotIt').onclick = function() {
+                clearInterval(cdInterval);
+                dismissControls();
+            };
+        } else {
+            gameRunning = true;
+            totalCorrectAnswers = 0;
+            totalQuestions = 0;
+        }
+    });
+    
+    document.getElementById('closeProgressBtn').addEventListener('click', function() {
+        document.getElementById('progressModal').style.display = 'none';
+        if (gameRunning) {
+            gamePaused = false;
+        }
+    });
+    
+    document.getElementById('skinsTab').addEventListener('click', function() {
+        document.getElementById('skinsTab').classList.add('active');
+        document.getElementById('challengesTab').classList.remove('active');
+        document.getElementById('statsTab').classList.remove('active');
+        document.getElementById('effectsTab').classList.remove('active');
+        document.getElementById('skinsPanel').style.display = 'block';
+        document.getElementById('challengesPanel').style.display = 'none';
+        document.getElementById('statsPanel').style.display = 'none';
+        document.getElementById('effectsPanel').style.display = 'none';
+    });
+
+    document.getElementById('challengesTab').addEventListener('click', function() {
+        document.getElementById('skinsTab').classList.remove('active');
+        document.getElementById('challengesTab').classList.add('active');
+        document.getElementById('statsTab').classList.remove('active');
+        document.getElementById('effectsTab').classList.remove('active');
+        document.getElementById('skinsPanel').style.display = 'none';
+        document.getElementById('challengesPanel').style.display = 'block';
+        document.getElementById('statsPanel').style.display = 'none';
+        document.getElementById('effectsPanel').style.display = 'none';
+    });
+
+    document.getElementById('statsTab').addEventListener('click', function() {
+        document.getElementById('skinsTab').classList.remove('active');
+        document.getElementById('challengesTab').classList.remove('active');
+        document.getElementById('statsTab').classList.add('active');
+        document.getElementById('effectsTab').classList.remove('active');
+        document.getElementById('skinsPanel').style.display = 'none';
+        document.getElementById('challengesPanel').style.display = 'none';
+        document.getElementById('statsPanel').style.display = 'block';
+        document.getElementById('effectsPanel').style.display = 'none';
+    });
+
+    document.getElementById('effectsTab').addEventListener('click', function() {
+        document.getElementById('skinsTab').classList.remove('active');
+        document.getElementById('challengesTab').classList.remove('active');
+        document.getElementById('statsTab').classList.remove('active');
+        document.getElementById('effectsTab').classList.add('active');
+        document.getElementById('skinsPanel').style.display = 'none';
+        document.getElementById('challengesPanel').style.display = 'none';
+        document.getElementById('statsPanel').style.display = 'none';
+        document.getElementById('effectsPanel').style.display = 'block';
+    });
+    
+    document.getElementById('menuBtn').addEventListener('click', function() {
+        gamePaused = true;
+        document.getElementById('pauseModal').style.display = 'block';
+    });
+    
+    document.getElementById('resumeBtn').addEventListener('click', function() {
+        gamePaused = false;
+        document.getElementById('pauseModal').style.display = 'none';
+        document.getElementById('progressModal').style.display = 'none';
+    });
+    
+    document.getElementById('viewProgressBtn2').addEventListener('click', function() {
+        renderProgressModal();
+        document.getElementById('pauseModal').style.display = 'none';
+        document.getElementById('progressModal').style.display = 'block';
+    });
+    
+    document.getElementById('quitBtn').addEventListener('click', function() {
+        location.reload();
+    });
+    
+    document.getElementById('godModeToggle').addEventListener('change', function(e) {
+        godMode = e.target.checked;
+    });
+    
+    document.getElementById('mathSubmit').addEventListener('click', checkAnswer);
+    document.getElementById('mathInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkAnswer();
+    });
+    
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+    document.getElementById('victoryRestart').addEventListener('click', restartGame);
+
+    document.getElementById('closePauseX').addEventListener('click', function() {
+        gamePaused = false;
+        document.getElementById('pauseModal').style.display = 'none';
+        document.getElementById('progressModal').style.display = 'none';
+    });
+
+    document.getElementById('closeProgressX').addEventListener('click', function() {
+        document.getElementById('progressModal').style.display = 'none';
+    });
+
+    document.getElementById('closeMathX').addEventListener('click', function() {
+        document.getElementById('mathModal').style.display = 'none';
+        gamePaused = false;
+    });
+
+    document.getElementById('musicToggleBtn').addEventListener('click', function() {
+        musicEnabled = !musicEnabled;
+        leadMusicGain.gain.value = musicEnabled ? 0.08 : 0;
+        bassMusicGain.gain.value = musicEnabled ? 0.06 : 0;
+        this.textContent = '🎵 MUSIC: ' + (musicEnabled ? 'ON' : 'OFF');
+    });
+
+    document.getElementById('continueBtn').addEventListener('click', function() {
+        continueUsed = true;
+        document.getElementById('gameOver').style.display = 'none';
+        lives = 3;
+        bullets = [];
+        zombies = [];
+        killParticles = [];
+        powerups = [];
+        healthPickups = [];
+        explosions = [];
+        bossActive = false;
+        boss = null;
+        invulnerableTimer = 0;
+        zombieSpawnTimer = 0;
+        hitsSinceQuestion = 0;
+        mathPromptCooldown = 0;
+        mouseDown = false;
+        burstCount = 0;
+        burstDelay = 0;
+        clickFired = false;
+        chargeStart = 0;
+        spinupFrames = 0;
+        gameRunning = true;
+        gamePaused = false;
+    });
+
+    document.getElementById('loadSaveBtn').addEventListener('click', function() {
+        const save = getSavedGame();
+        if (!save) return;
+        gameMode = save.gameMode || (save.hardMode ? 'hard' : 'multiply');
+        document.querySelectorAll('.mode-opt').forEach(b => {
+            b.classList.toggle('selected', b.dataset.mode === gameMode);
+        });
+        currentLevel = save.currentLevel;
+        score = save.score;
+        correctAnswers = save.correctAnswers;
+        weaponIndex = save.weaponIndex;
+        weapon = save.weapon;
+        continueUsed = save.continueUsed || false;
+        lives = 5;
+        bullets = [];
+        zombies = [];
+        killParticles = [];
+        powerups = [];
+        healthPickups = [];
+        bossActive = false;
+        boss = null;
+        invulnerableTimer = 0;
+        zombieSpawnTimer = 0;
+        hitsSinceQuestion = 0;
+        streak = 0;
+        shootCooldown = 0;
+        mouseDown = false;
+        burstCount = 0;
+        burstDelay = 0;
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+        document.getElementById('weaponName').textContent = WEAPONS[weapon].name;
+        document.getElementById('introScreen').classList.add('hidden');
+        if (!musicStarted) {
+            musicStarted = true;
+            leadNoteIdx = 0; bassNoteIdx = 0;
+            nextLeadTime = audioContext.currentTime + 0.1;
+            nextBassTime = audioContext.currentTime + 0.1;
+            musicSchedulerInterval = setInterval(scheduleMusic, 200);
+            scheduleMusic();
+        }
+        gameRunning = true;
+        gamePaused = false;
+    });
+
+    showLoadSaveButton();
+
+    // Render progress modal
+    function renderProgressModal() {
+        const skinsList = document.getElementById('skinsList');
+        skinsList.innerHTML = '';
+        
+        Object.keys(SKINS).forEach(skinId => {
+            const skin = SKINS[skinId];
+            const unlocked = playerData.unlockedSkins.includes(skinId);
+            const selected = playerData.selectedSkin === skinId;
+            
+            const skinDiv = document.createElement('div');
+            skinDiv.className = `skin-item ${unlocked ? 'unlocked' : 'locked'} ${selected ? 'selected' : ''}`;
+            
+            let colorDisplay = '';
+            if (skin.color1 === 'rainbow') {
+                colorDisplay = '<div style="background: linear-gradient(90deg, red, orange, yellow, green, cyan, blue, purple); width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>';
+            } else if (skin.color1 === 'fire') {
+                colorDisplay = '<div style="background: linear-gradient(180deg, #ff0000, #ff6600, #ffaa00); width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>';
+            } else if (skin.color1 === 'holo') {
+                colorDisplay = '<div style="background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #ff0080); background-size: 200% 200%; animation: shimmer 2s linear infinite; width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>';
+            } else if (skin.color1 === 'galaxy') {
+                colorDisplay = '<div style="background: linear-gradient(135deg, #000033, #6600ff, #ff00ff, #ffffff); width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>';
+            } else if (skin.color1 === 'reactive') {
+                colorDisplay = '<div style="background: radial-gradient(circle, #ff00ff, #00ffff, #ff00ff); animation: pulse 1s infinite; width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>';
+            } else if (skin.color1 === 'ultimate') {
+                colorDisplay = '<div style="background: linear-gradient(90deg, red, orange, yellow, green, cyan, blue, purple, #ff00ff); background-size: 200% 200%; animation: shimmer 1s linear infinite; width: 60px; height: 60px; margin: 10px auto; border-radius: 5px; box-shadow: 0 0 20px #ff00ff;"></div>';
+            } else {
+                colorDisplay = `<div style="background: linear-gradient(180deg, ${skin.color1}, ${skin.color2}); width: 60px; height: 60px; margin: 10px auto; border-radius: 5px;"></div>`;
+            }
+            
+            skinDiv.innerHTML = `
+                ${colorDisplay}
+                <div style="font-weight: bold;">${skin.name}</div>
+                <div style="font-size: 12px; color: ${unlocked ? '#44ff44' : '#ff4444'};">
+                    ${unlocked ? (selected ? 'EQUIPPED ✓' : 'Click to equip') : '🔒 ' + skin.requirement}
+                </div>
+            `;
+            
+            if (unlocked) {
+                skinDiv.onclick = () => {
+                    playerData.selectedSkin = skinId;
+                    saveProgress();
+                    renderProgressModal();
+                };
+            }
+            
+            skinsList.appendChild(skinDiv);
+        });
+        
+        const challengesList = document.getElementById('challengesList');
+        challengesList.innerHTML = '';
+        const effectNames = { bulletTrail: 'Bullet Trail', deathNova: 'Death Nova' };
+
+        CHALLENGES.forEach(challenge => {
+            const completed = challenge.check(playerData);
+            const challengeDiv = document.createElement('div');
+            challengeDiv.className = `challenge-item ${completed ? 'completed' : ''}`;
+            const rewardName = SKINS[challenge.reward]?.name || effectNames[challenge.reward] || challenge.reward;
+
+            challengeDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 16px;">${challenge.name}</div>
+                        <div style="font-size: 14px; color: #aaa;">${challenge.desc}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 20px;">${completed ? '✅' : '⏳'}</div>
+                        <div style="font-size: 12px; color: #ffaa00;">Reward: ${rewardName}</div>
+                    </div>
+                </div>
+            `;
+            
+            challengesList.appendChild(challengeDiv);
+        });
+        
+        const accuracy = playerData.totalQuestions > 0 ? Math.round((playerData.totalCorrect / playerData.totalQuestions) * 100) : 0;
+        document.getElementById('statsDisplay').innerHTML = `
+            <div style="text-align: left; font-size: 16px; line-height: 2; padding: 20px;">
+                <div>🏆 High Score: <span style="color: #ffaa00;">${playerData.highScore}</span></div>
+                <div>📊 Max Level: <span style="color: #44ff44;">${playerData.maxLevel}</span></div>
+                <div>🔥 Best Streak: <span style="color: #ff6600;">${playerData.bestStreak}</span></div>
+                <div>🧟 Total Zombies: <span style="color: #ff4444;">${playerData.totalZombies}</span></div>
+                <div>✅ Total Correct: <span style="color: #44ff44;">${playerData.totalCorrect}</span></div>
+                <div>🎯 Accuracy: <span style="color: #ffaa00;">${accuracy}%</span></div>
+                <div>🎮 Games Beaten: <span style="color: #00aaff;">${playerData.timesBeaten}</span></div>
+                <div>💀 Hard Mode Wins: <span style="color: ${(playerData.hardModeBeaten||0) > 0 ? '#44ff44' : '#ff4444'};">${playerData.hardModeBeaten || 0}</span></div>
+            </div>
+        `;
+
+        const effectsList = document.getElementById('effectsList');
+        effectsList.innerHTML = '';
+        const EFFECTS = [
+            { id: 'bulletTrail', name: 'Bullet Trail', desc: 'Bullets leave a glowing trail', requirement: '5 answer streak' },
+            { id: 'deathNova', name: 'Death Nova', desc: 'Kills explode in a burst of energy', requirement: '10 answer streak' }
+        ];
+        const unlockedEff = playerData.unlockedEffects || [];
+        const selectedEff = playerData.selectedEffects || [];
+        EFFECTS.forEach(effect => {
+            const unlocked = unlockedEff.includes(effect.id);
+            const active = selectedEff.includes(effect.id);
+            const div = document.createElement('div');
+            div.className = 'challenge-item' + (active ? ' completed' : '');
+            div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:bold;">${effect.name}</div>
+                    <div style="font-size:13px;color:#aaa;">${effect.desc}</div>
+                    <div style="font-size:12px;color:#888;">Unlock: ${effect.requirement}</div>
+                </div>
+                <div>${unlocked
+                    ? `<button onclick="toggleEffect('${effect.id}')" style="background:${active ? '#44ff44' : '#444'};color:${active ? '#000' : '#fff'};border:none;padding:8px 14px;border-radius:6px;cursor:pointer;">${active ? 'ON ✓' : 'OFF'}</button>`
+                    : '🔒'}</div>
+            </div>`;
+            effectsList.appendChild(div);
+        });
+    }
+
+    window.toggleEffect = function(id) {
+        if (!playerData.selectedEffects) playerData.selectedEffects = [];
+        const idx = playerData.selectedEffects.indexOf(id);
+        if (idx > -1) playerData.selectedEffects.splice(idx, 1);
+        else playerData.selectedEffects.push(id);
+        saveProgress();
+        renderProgressModal();
+    };
+    
+    // Game functions
+    function shoot(overrideDamage) {
+        if (bullets.length > 150) return;
+        playSound('shoot');
+        const angle = player.angle;
+        const currentWeapon = WEAPONS[weapon];
+        const dmg = overrideDamage !== undefined ? overrideDamage : currentWeapon.damage;
+
+        for (let i = 0; i < currentWeapon.bullets; i++) {
+            let spreadOffset = 0;
+            if (currentWeapon.bullets > 1) {
+                spreadOffset = (i / (currentWeapon.bullets - 1) - 0.5) * currentWeapon.spread;
+            } else if (currentWeapon.spread > 0) {
+                spreadOffset = (Math.random() - 0.5) * currentWeapon.spread;
+            }
+
+            const spreadAngle = angle + spreadOffset;
+            const bullet = {
+                x: player.x,
+                y: player.y,
+                dx: Math.cos(spreadAngle) * 6,
+                dy: Math.sin(spreadAngle) * 6,
+                size: weapon === 'sniper' ? 12 : 8,
+                color: currentWeapon.color,
+                damage: dmg,
+                trail: []
+            };
+            if (currentWeapon.piercing)  bullet.piercing  = true;
+            if (currentWeapon.knockback) bullet.knockback = currentWeapon.knockback;
+            if (currentWeapon.explosive) bullet.explosive = true;
+            if (currentWeapon.slowOnHit) bullet.slowOnHit = true;
+            bullets.push(bullet);
+        }
+    }
+    
+    function upgradeWeapon() {
+        if (weaponIndex < WEAPON_ORDER.length - 1) {
+            weaponIndex++;
+            weapon = WEAPON_ORDER[weaponIndex];
+            const weaponData = WEAPONS[weapon];
+            
+            playSound('powerup');
+            
+            document.getElementById('weaponUpgradeTitle').textContent = weaponData.name.toUpperCase() + ' UNLOCKED!';
+            
+            let desc = '';
+            if (weaponData.bullets > 1) {
+                desc = `Fires ${weaponData.bullets} bullets at once!`;
+            } else if (weaponData.cooldown < 10) {
+                desc = 'Ultra fast fire rate!';
+            } else if (weaponData.damage > 1) {
+                desc = `${weaponData.damage}x damage per shot!`;
+            } else {
+                desc = 'Enhanced firepower!';
+            }
+            
+            document.getElementById('weaponUpgradeDesc').textContent = desc;
+            document.getElementById('weaponUpgrade').style.display = 'block';
+            gameRunning = false;
+            
+            let countdown = 3;
+            const countdownDisplay = document.getElementById('upgradeCountdown');
+            countdownDisplay.textContent = countdown;
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    countdownDisplay.textContent = countdown;
+                } else {
+                    clearInterval(countdownInterval);
+                    document.getElementById('weaponUpgrade').style.display = 'none';
+                    skipBtn.style.display = 'none';
+                    gameRunning = true;
+                }
+            }, 1000);
+
+            const skipBtn = document.getElementById('skipUpgradeBtn');
+            skipBtn.style.display = 'block';
+            skipBtn.onclick = function() {
+                clearInterval(countdownInterval);
+                document.getElementById('weaponUpgrade').style.display = 'none';
+                skipBtn.style.display = 'none';
+                gameRunning = true;
+            };
+
+            document.getElementById('weaponName').textContent = weaponData.name;
+        }
+    }
+    
+    function spawnPowerup(x, y) {
+        const types = ['shield', 'slowmo'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        powerups.push({
+            x, y,
+            size: 20,
+            type: type,
+            life: 600,
+            color: type === 'shield' ? '#00aaff' : '#ff00ff'
+        });
+    }
+    
+    function generateMathProblem() {
+        let num1, num2, answer, problem, tip;
+
+        if (gameMode === 'hard') {
+            // Both operations in one problem: A × B ÷ C
+            let divisor, quotient, product;
+            let attempts = 0;
+            do {
+                divisor = Math.floor(Math.random() * 6) + 2;
+                quotient = Math.floor(Math.random() * 12) + 1;
+                product = divisor * quotient;
+
+                num1 = Math.floor(Math.random() * 12) + 1;
+                num2 = Math.floor(product / num1);
+
+                if (num2 < 1 || num2 > 12 || num1 * num2 !== product) {
+                    const factors = [];
+                    for (let i = 1; i <= 12; i++) {
+                        if (product % i === 0 && product / i <= 12) factors.push(i);
+                    }
+                    if (factors.length > 0) {
+                        num1 = factors[Math.floor(Math.random() * factors.length)];
+                        num2 = product / num1;
+                    } else {
+                        num1 = Math.floor(Math.random() * 8) + 2;
+                        num2 = divisor;
+                    }
+                }
+                attempts++;
+            } while (attempts < 20 && (divisor === num1 || divisor === num2 || quotient === num1 || quotient === num2));
+
+            answer = quotient;
+            problem = `${num1} × ${num2} ÷ ${divisor}`;
+            tip = "💡 Tip: Multiply first, then divide!";
+
+        } else if (gameMode === 'multiply') {
+            num1 = Math.floor(Math.random() * 12) + 1;
+            num2 = Math.floor(Math.random() * 12) + 1;
+            answer = num1 * num2;
+            problem = `${num1} × ${num2}`;
+            tip = "💡 Tip: Use your times tables!";
+
+        } else if (gameMode === 'divide') {
+            num2 = Math.floor(Math.random() * 12) + 1;
+            answer = Math.floor(Math.random() * 12) + 1;
+            num1 = num2 * answer;
+            problem = `${num1} ÷ ${num2}`;
+            tip = `💡 Tip: Think: what times ${num2} equals ${num1}?`;
+
+        } else {
+            // mixed: one operation per question, randomly × or ÷
+            if (Math.random() < 0.5) {
+                num1 = Math.floor(Math.random() * 12) + 1;
+                num2 = Math.floor(Math.random() * 12) + 1;
+                answer = num1 * num2;
+                problem = `${num1} × ${num2}`;
+                tip = "💡 Tip: Use your times tables!";
+            } else {
+                num2 = Math.floor(Math.random() * 12) + 1;
+                answer = Math.floor(Math.random() * 12) + 1;
+                num1 = num2 * answer;
+                problem = `${num1} ÷ ${num2}`;
+                tip = `💡 Tip: Think: what times ${num2} equals ${num1}?`;
+            }
+        }
+
+        return { problem, answer, tip };
+    }
+    
+    function showMathProblem(zombie) {
+        const { problem, answer, tip } = generateMathProblem();
+        currentZombie = zombie;
+        currentAnswer = answer;
+        currentProblem = problem;
+        document.getElementById('mathProblem').textContent = problem + ' = ?';
+        document.getElementById('mathTip').textContent = tip;
+        document.getElementById('mathInput').value = '';
+        document.getElementById('mathFeedback').style.display = 'none';
+        document.getElementById('mathModal').style.display = 'block';
+        document.getElementById('mathInput').focus();
+        gamePaused = true;
+    }
+    
+    function checkAnswer() {
+        const input = document.getElementById('mathInput');
+        const userAnswer = parseInt(input.value);
+        if (input.value === '' || isNaN(userAnswer)) {
+            input.classList.add('shake-input');
+            setTimeout(() => input.classList.remove('shake-input'), 300);
+            return;
+        }
+        const feedbackDiv = document.getElementById('mathFeedback');
+        totalQuestions++;
+        
+        if (userAnswer === currentAnswer) {
+            playSound('correct');
+            totalCorrectAnswers++;
+            streak++;
+            if (streak > bestStreak) bestStreak = streak;
+            
+            feedbackDiv.innerHTML = `✅ <strong>CORRECT!</strong><br>${currentProblem} = ${currentAnswer}`;
+            feedbackDiv.style.color = '#00ff00';
+            feedbackDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                if (currentZombie === 'BOSS') {
+                    boss.hp--;
+                    score += 25;
+                    if (boss.hp <= 0) {
+                        playSound('correct');
+                        defeatBoss();
+                    }
+                } else {
+                    correctAnswers++;
+                    const idx = zombies.indexOf(currentZombie);
+                    if (idx > -1) zombies.splice(idx, 1);
+                    score += 10;
+                    zombiesKilled++;
+                    zombieKillsForHealth++;
+                    
+                    if (zombieKillsForHealth >= 3 && currentZombie && currentZombie.x) {
+                        healthPickups.push({
+                            x: currentZombie.x,
+                            y: currentZombie.y,
+                            size: 15,
+                            life: 600
+                        });
+                        zombieKillsForHealth = 0;
+                    }
+                    
+                    if (Math.random() < 0.15 && currentZombie && currentZombie.x) {
+                        spawnPowerup(currentZombie.x, currentZombie.y);
+                    }
+                    
+                    if (correctAnswers % 5 === 0 && correctAnswers > 0 && correctAnswers <= 45) {
+                        startBossFight();
+                    }
+                }
+                
+                document.getElementById('mathModal').style.display = 'none';
+                gamePaused = false;
+                const overlayC = document.getElementById('feedback');
+                overlayC.textContent = '✅ CORRECT!';
+                overlayC.style.color = '#00ff00';
+                overlayC.style.display = 'block';
+                setTimeout(() => { overlayC.style.display = 'none'; }, 800);
+            }, 1500);
+        } else {
+            playSound('wrong');
+            streak = 0;
+            lives--;
+            invulnerableTimer = 120;
+            if (lives <= 0) gameOver();
+
+            feedbackDiv.innerHTML = `❌ <strong>The answer is:</strong><br>${currentProblem} = ${currentAnswer}<br>Try to remember it!`;
+            feedbackDiv.style.color = '#ff6666';
+            feedbackDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                if (currentZombie === 'BOSS') {
+                } else {
+                    const idx = zombies.indexOf(currentZombie);
+                    if (idx > -1) zombies.splice(idx, 1);
+                }
+                
+                document.getElementById('mathModal').style.display = 'none';
+                gamePaused = false;
+                const overlayW = document.getElementById('feedback');
+                overlayW.textContent = '❌ WRONG!';
+                overlayW.style.color = '#ff4444';
+                overlayW.style.display = 'block';
+                setTimeout(() => { overlayW.style.display = 'none'; }, 1000);
+            }, 3000);
+        }
+    }
+    
+    function startBossFight() {
+        gameRunning = false;
+        zombies = [];
+        player.x = canvas.width / 2;
+        player.y = canvas.height - 100;
+
+        const warnNow = audioContext.currentTime;
+        [300, 400, 500].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const g = audioContext.createGain();
+            osc.connect(g);
+            g.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            g.gain.setValueAtTime(0.2, warnNow + i * 0.22);
+            g.gain.setValueAtTime(0, warnNow + i * 0.22 + 0.15);
+            osc.start(warnNow + i * 0.22);
+            osc.stop(warnNow + i * 0.22 + 0.15);
+        });
+
+        setTimeout(() => {
+            bossActive = true;
+            invulnerableTimer = 180;
+
+            const bossTypes = ['circle', 'triangle', 'square', 'pentagon', 'hexagon', 'octagon', 'star', 'rectangle', 'mega'];
+            const bossType = bossTypes[Math.min(currentLevel - 1, 8)];
+            const speedMultiplier = currentLevel === 1 ? 0.86 : currentLevel === 2 ? 0.81 : 0.9;
+            const bossHp = 3 + Math.floor(currentLevel / 2);
+            boss = {
+                type: bossType,
+                x: canvas.width / 2,
+                y: 100,
+                size: 60,
+                dx: 2 * speedMultiplier,
+                dy: 2 * speedMultiplier,
+                hp: bossHp,
+                maxHp: bossHp,
+                color: ['#ff4444', '#44ff44', '#ffff44', '#ff8844', '#8844ff', '#44ffff', '#ff44ff', '#ff4488', '#ff0088'][currentLevel - 1],
+                angle: 0,
+                spinSpeed: 0.05,
+                shootTimer: 0,
+                rollAngle: 0,
+                chargeTimer: 0,
+                chargeDelay: 0,
+                charging: false,
+                chargeStartX: 0,
+                chargeStartY: 0,
+                chargeTargetX: 0,
+                chargeTargetY: 0,
+                chargeDuration: 0,
+                teleportTimer: 0,
+                orbitAngle: 0,
+                morphTimer: 0,
+                currentMorphShape: 0
+            };
+            screenShake = 20;
+            gameRunning = true;
+        }, 1000);
+    }
+    
+    function updateBoss() {
+        if (!boss) return;
+        
+        boss.angle += boss.spinSpeed;
+        boss.shootTimer++;
+        
+        if (boss.type === 'circle') {
+            boss.x += boss.dx;
+            boss.y += boss.dy;
+            if (boss.x <= boss.size || boss.x >= canvas.width - boss.size) boss.dx = -boss.dx;
+            if (boss.y <= boss.size || boss.y >= canvas.height - boss.size) boss.dy = -boss.dy;
+            
+            if (boss.shootTimer > 100) {
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI * 2 / 8) * i;
+                    bullets.push({
+                        x: boss.x, y: boss.y,
+                        dx: Math.cos(angle) * 2, dy: Math.sin(angle) * 2,
+                        size: 4, color: '#ff4444', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        else if (boss.type === 'triangle') {
+            boss.x += boss.dx;
+            boss.y += boss.dy;
+            if (boss.x <= boss.size || boss.x >= canvas.width - boss.size) boss.dx = -boss.dx;
+            if (boss.y <= boss.size || boss.y >= canvas.height - boss.size) boss.dy = -boss.dy;
+            
+            boss.spinSpeed = 0.08;
+            
+            if (boss.shootTimer > 80) {
+                for (let i = 0; i < 3; i++) {
+                    const angle = boss.angle + (Math.PI * 2 / 3) * i;
+                    bullets.push({
+                        x: boss.x + Math.cos(angle) * boss.size,
+                        y: boss.y + Math.sin(angle) * boss.size,
+                        dx: Math.cos(angle) * 3,
+                        dy: Math.sin(angle) * 3,
+                        size: 5, color: '#44ff44', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        else if (boss.type === 'square') {
+            const dx = player.x - boss.x;
+            const dy = player.y - boss.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0) {
+                boss.x += (dx / dist) * 1.0;
+                boss.y += (dy / dist) * 1.0;
+                boss.rollAngle += 0.1;
+            }
+            
+            if (boss.shootTimer > 90) {
+                for (let i = 0; i < 4; i++) {
+                    const angle = (Math.PI / 2) * i + boss.rollAngle;
+                    bullets.push({
+                        x: boss.x, y: boss.y,
+                        dx: Math.cos(angle) * 2.5,
+                        dy: Math.sin(angle) * 2.5,
+                        size: 5, color: '#ffff44', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        else if (boss.type === 'pentagon') {
+            if (!boss.charging) {
+                boss.chargeTimer++;
+                boss.spinSpeed = 0.1;
+                
+                if (boss.shootTimer > 70) {
+                    for (let i = 0; i < 5; i++) {
+                        const angle = boss.angle + (Math.PI * 2 / 5) * i;
+                        bullets.push({
+                            x: boss.x + Math.cos(angle) * boss.size,
+                            y: boss.y + Math.sin(angle) * boss.size,
+                            dx: Math.cos(angle) * 2,
+                            dy: Math.sin(angle) * 2,
+                            size: 6, color: '#ff8844', type: 'enemy'
+                        });
+                    }
+                    boss.shootTimer = 0;
+                }
+                
+                if (boss.chargeTimer > 2700) {
+                    boss.charging = true;
+                    boss.chargeDelay = 60;
+                    boss.chargeTargetX = player.x;
+                    boss.chargeTargetY = player.y;
+                    boss.chargeStartX = boss.x;
+                    boss.chargeStartY = boss.y;
+                    playSound('powerup');
+                }
+            } else {
+                if (boss.chargeDelay > 0) {
+                    boss.chargeDelay--;
+                } else {
+                    const dx = boss.chargeTargetX - boss.x;
+                    const dy = boss.chargeTargetY - boss.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 10) {
+                        boss.x += (dx / dist) * 8;
+                        boss.y += (dy / dist) * 8;
+                    } else {
+                        boss.charging = false;
+                        boss.chargeTimer = 0;
+                    }
+                }
+            }
+        }
+        else if (boss.type === 'hexagon') {
+            boss.teleportTimer++;
+            boss.spinSpeed = 0.06;
+            
+            if (boss.shootTimer > 60) {
+                for (let i = 0; i < 6; i++) {
+                    const angle = boss.angle + (Math.PI * 2 / 6) * i;
+                    bullets.push({
+                        x: boss.x + Math.cos(angle) * boss.size,
+                        y: boss.y + Math.sin(angle) * boss.size,
+                        dx: Math.cos(angle) * 2.5,
+                        dy: Math.sin(angle) * 2.5,
+                        size: 5, color: '#8844ff', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+            
+            if (boss.teleportTimer > 180) {
+                const positions = [
+                    { x: 150, y: 100 },
+                    { x: canvas.width - 150, y: 100 },
+                    { x: canvas.width / 2, y: 150 },
+                    { x: 200, y: canvas.height / 2 },
+                    { x: canvas.width - 200, y: canvas.height / 2 }
+                ];
+                const newPos = positions[Math.floor(Math.random() * positions.length)];
+                boss.x = newPos.x;
+                boss.y = newPos.y;
+                boss.teleportTimer = 0;
+                playSound('powerup');
+            }
+        }
+        else if (boss.type === 'octagon') {
+            boss.orbitAngle += 0.015;
+            boss.x = canvas.width / 2 + Math.cos(boss.orbitAngle) * 200;
+            boss.y = canvas.height / 2 + Math.sin(boss.orbitAngle) * 150;
+            boss.spinSpeed = 0.12;
+            
+            if (boss.shootTimer > 50) {
+                for (let i = 0; i < 8; i++) {
+                    const angle = boss.angle + (Math.PI * 2 / 8) * i + boss.orbitAngle;
+                    bullets.push({
+                        x: boss.x, y: boss.y,
+                        dx: Math.cos(angle) * 2,
+                        dy: Math.sin(angle) * 2,
+                        size: 4, color: '#44ffff', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        else if (boss.type === 'star') {
+            if (!boss.charging) {
+                boss.chargeTimer++;
+                boss.spinSpeed = 0.15;
+                
+                if (boss.shootTimer > 30) {
+                    const angleToPlayer = Math.atan2(player.y - boss.y, player.x - boss.x);
+                    bullets.push({
+                        x: boss.x, y: boss.y,
+                        dx: Math.cos(angleToPlayer) * 3,
+                        dy: Math.sin(angleToPlayer) * 3,
+                        size: 6, color: '#ff44ff', type: 'enemy'
+                    });
+                    boss.shootTimer = 0;
+                }
+                
+                if (boss.chargeTimer > 2700) {
+                    boss.charging = true;
+                    boss.chargeDelay = 45;
+                    boss.chargeTargetX = player.x;
+                    boss.chargeTargetY = player.y;
+                    playSound('powerup');
+                }
+            } else {
+                if (boss.chargeDelay > 0) {
+                    boss.chargeDelay--;
+                } else {
+                    const dx = boss.chargeTargetX - boss.x;
+                    const dy = boss.chargeTargetY - boss.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 15) {
+                        boss.x += (dx / dist) * 10;
+                        boss.y += (dy / dist) * 10;
+                    } else {
+                        boss.charging = false;
+                        boss.chargeTimer = 0;
+                    }
+                }
+            }
+        }
+        else if (boss.type === 'rectangle') {
+            boss.x += boss.dx * 0.8;
+            if (boss.x <= boss.size + 50 || boss.x >= canvas.width - boss.size - 50) {
+                           boss.dx = -boss.dx;
+            }
+            boss.y = 120;
+            
+            if (boss.shootTimer > 70) {
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        if (boss) {
+                            const angleToPlayer = Math.atan2(player.y - boss.y, player.x - boss.x);
+                            bullets.push({
+                                x: boss.x, y: boss.y,
+                                dx: Math.cos(angleToPlayer) * 4,
+                                dy: Math.sin(angleToPlayer) * 4,
+                                size: 7, color: '#ff4488', type: 'enemy'
+                            });
+                        }
+                    }, i * 150);
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        else if (boss.type === 'mega') {
+            boss.morphTimer++;
+            
+            if (boss.morphTimer > 300) {
+                boss.currentMorphShape = (boss.currentMorphShape + 1) % 7;
+                boss.morphTimer = 0;
+                playSound('powerup');
+            }
+            
+            const dx = player.x - boss.x;
+            const dy = player.y - boss.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                boss.x += (dx / dist) * 1;
+                boss.y += (dy / dist) * 1;
+            }
+            
+            boss.spinSpeed = 0.08;
+            
+            if (boss.shootTimer > 60) {
+                const patterns = [8, 3, 4, 5, 6, 8, 7];
+                const bulletCount = patterns[boss.currentMorphShape];
+                
+                for (let i = 0; i < bulletCount; i++) {
+                    const angle = boss.angle + (Math.PI * 2 / bulletCount) * i;
+                    bullets.push({
+                        x: boss.x, y: boss.y,
+                        dx: Math.cos(angle) * 2.5,
+                        dy: Math.sin(angle) * 2.5,
+                        size: 6, color: '#ff0088', type: 'enemy'
+                    });
+                }
+                boss.shootTimer = 0;
+            }
+        }
+        
+        if (invulnerableTimer <= 0 && !godMode && !shieldActive) {
+            const dx = boss.x - player.x;
+            const dy = boss.y - player.y;
+            if (Math.sqrt(dx*dx + dy*dy) < boss.size + player.size) {
+                lives--;
+                invulnerableTimer = 120;
+                if (lives <= 0) gameOver();
+            }
+        }
+    }
+    
+    function drawBoss() {
+        if (!boss) return;
+        
+        ctx.save();
+        ctx.translate(boss.x, boss.y);
+        ctx.rotate(boss.angle);
+        
+        if (boss.type === 'circle' || (boss.type === 'mega' && boss.currentMorphShape === 0)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'triangle' || (boss.type === 'mega' && boss.currentMorphShape === 1)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            for (let i = 0; i < 3; i++) {
+                const angle = (Math.PI * 2 / 3) * i - Math.PI / 2;
+                const x = Math.cos(angle) * boss.size;
+                const y = Math.sin(angle) * boss.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'square' || (boss.type === 'mega' && boss.currentMorphShape === 2)) {
+            ctx.fillStyle = boss.color;
+            ctx.fillRect(-boss.size * 0.7, -boss.size * 0.7, boss.size * 1.4, boss.size * 1.4);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-boss.size * 0.7, -boss.size * 0.7, boss.size * 1.4, boss.size * 1.4);
+        }
+        else if (boss.type === 'pentagon' || (boss.type === 'mega' && boss.currentMorphShape === 3)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+                const x = Math.cos(angle) * boss.size;
+                const y = Math.sin(angle) * boss.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'hexagon' || (boss.type === 'mega' && boss.currentMorphShape === 4)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI * 2 / 6) * i;
+                const x = Math.cos(angle) * boss.size;
+                const y = Math.sin(angle) * boss.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'octagon' || (boss.type === 'mega' && boss.currentMorphShape === 5)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (Math.PI * 2 / 8) * i;
+                const x = Math.cos(angle) * boss.size;
+                const y = Math.sin(angle) * boss.size;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'star' || (boss.type === 'mega' && boss.currentMorphShape === 6)) {
+            ctx.fillStyle = boss.color;
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const angle = (Math.PI * 2 / 10) * i - Math.PI / 2;
+                const radius = i % 2 === 0 ? boss.size : boss.size * 0.5;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+        else if (boss.type === 'rectangle') {
+            ctx.fillStyle = boss.color;
+            ctx.fillRect(-boss.size * 1.2, -boss.size * 0.5, boss.size * 2.4, boss.size);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-boss.size * 1.2, -boss.size * 0.5, boss.size * 2.4, boss.size);
+        }
+        
+        ctx.restore();
+        
+        if (boss.type === 'pentagon' && boss.charging && boss.chargeDelay > 0) {
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 5;
+            ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.5;
+            ctx.setLineDash([10, 10]);
+            ctx.strokeRect(-boss.size * 1.5, -boss.size * 1.5, boss.size * 3, boss.size * 3);
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+        
+        if (boss.type === 'star' && boss.charging && boss.chargeDelay > 0) {
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 6;
+            ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 80) * 0.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.size + 20, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+        
+        const barWidth = 200;
+        const barHeight = 20;
+        const barX = canvas.width / 2 - barWidth / 2;
+        const barY = 30;
+        
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(barX, barY, barWidth * (boss.hp / boss.maxHp), barHeight);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px Courier New';
+        ctx.textAlign = 'center';
+        
+        let bossName = boss.type.toUpperCase();
+        if (boss.type === 'mega') {
+            const shapes = ['CIRCLE', 'TRIANGLE', 'SQUARE', 'PENTAGON', 'HEXAGON', 'OCTAGON', 'STAR'];
+            bossName = `MEGA (${shapes[boss.currentMorphShape]})`;
+        }
+        
+        ctx.fillText(`LEVEL ${currentLevel} BOSS: ${bossName} - HP: ${boss.hp}/${boss.maxHp}`, canvas.width / 2, barY - 5);
+    }
+    
+    function defeatBoss() {
+        score += 100;
+        bossActive = false;
+        boss = null;
+        mathPromptCooldown = 0;
+
+        if (currentLevel > playerData.maxLevel) playerData.maxLevel = currentLevel;
+        if (score > playerData.highScore) playerData.highScore = score;
+        if (bestStreak > playerData.bestStreak) playerData.bestStreak = bestStreak;
+        checkUnlocks();
+        saveProgress();
+
+        upgradeWeapon();
+
+        currentLevel++;
+        leadNoteIdx = 0;
+        bassNoteIdx = 0;
+
+        if (currentLevel > 9) {
+            setTimeout(() => {
+                showVictory();
+            }, 3000);
+        } else {
+            setTimeout(() => {
+                showLevelTransition();
+            }, 3000);
+        }
+    }
+    
+    function showLevelTransition() {
+        playSound('powerup');
+        document.getElementById('levelTitle').textContent = `LEVEL ${currentLevel} UNLOCKED!`;
+        document.getElementById('levelMessage').textContent = levelMessages[currentLevel] || "Keep going!";
+        const acc = totalQuestions > 0 ? Math.round((totalCorrectAnswers / totalQuestions) * 100) : 0;
+        document.getElementById('levelStats').textContent = `Zombies: ${zombiesKilled} | Correct: ${totalCorrectAnswers} | Accuracy: ${acc}%`;
+        document.getElementById('levelTransition').style.display = 'block';
+        gameRunning = false;
+        
+        let countdown = 3;
+        const countdownDisplay = document.getElementById('countdown');
+        countdownDisplay.textContent = countdown;
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                countdownDisplay.textContent = countdown;
+            } else {
+                clearInterval(countdownInterval);
+                document.getElementById('levelTransition').style.display = 'none';
+                saveGame();
+                gameRunning = true;
+            }
+        }, 1000);
+    }
+    
+    function showVictory() {
+        document.getElementById('victoryScore').textContent = score;
+        document.getElementById('victory').style.display = 'block';
+        gameRunning = false;
+
+        playerData.gameBeaten = true;
+        playerData.timesBeaten++;
+        if (gameMode === 'hard') playerData.hardModeBeaten = (playerData.hardModeBeaten || 0) + 1;
+        if (currentLevel > playerData.maxLevel) playerData.maxLevel = currentLevel;
+        if (score > playerData.highScore) playerData.highScore = score;
+        if (bestStreak > playerData.bestStreak) playerData.bestStreak = bestStreak;
+        playerData.totalZombies += zombiesKilled;
+        playerData.totalCorrect += totalCorrectAnswers;
+        playerData.totalQuestions += totalQuestions;
+
+        const prevUnlocked = [...playerData.unlockedSkins];
+        checkUnlocks();
+        const newlyUnlocked = playerData.unlockedSkins.filter(s => !prevUnlocked.includes(s));
+        if (newlyUnlocked.length > 0) {
+            const _effNames = { bulletTrail: 'Bullet Trail', deathNova: 'Death Nova' };
+            const skinNames = newlyUnlocked.map(s => SKINS[s]?.name || _effNames[s] || s).join(', ');
+            document.getElementById('unlockedReward').textContent = '🎨 NEW SKIN UNLOCKED: ' + skinNames + '!';
+        }
+
+        saveProgress();
+    }
+    
+    function restartGame() {
+        gameRunning = false;
+        score = 0;
+        lives = 5;
+        currentLevel = 1;
+        zombiesKilled = 0;
+        correctAnswers = 0;
+        totalCorrectAnswers = 0;
+        totalQuestions = 0;
+        weaponIndex = 0;
+        weapon = 'pistol';
+        hitsSinceQuestion = 0;
+        mathPromptCooldown = 0;
+        streak = 0;
+        shootCooldown = 0;
+        mouseDown = false;
+        burstCount = 0;
+        burstDelay = 0;
+        clickFired = false;
+        chargeStart = 0;
+        spinupFrames = 0;
+        continueUsed = false;
+        shieldActive = false;
+        clearSavedGame();
+        shieldTimer = 0;
+        slowMoActive = false;
+        slowMoTimer = 0;
+        bullets = [];
+        zombies = [];
+        killParticles = [];
+        powerups = [];
+        healthPickups = [];
+        explosions = [];
+        zombieSpawnTimer = 0;
+        bossActive = false;
+        boss = null;
+        invulnerableTimer = 0;
+        zombieKillsForHealth = 0;
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+        
+        screenShake = 0;
+        musicStarted = false;
+        leadNoteIdx = 0;
+        bassNoteIdx = 0;
+        if (musicSchedulerInterval) { clearInterval(musicSchedulerInterval); musicSchedulerInterval = null; }
+
+        document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('victory').style.display = 'none';
+        document.getElementById('mathModal').style.display = 'none';
+        document.getElementById('weaponName').textContent = 'Pistol';
+        document.getElementById('introScreen').classList.remove('hidden');
+    }
+    
+    function gameOver() {
+        gameRunning = false;
+        if (score > playerData.highScore) playerData.highScore = score;
+        if (currentLevel > playerData.maxLevel) playerData.maxLevel = currentLevel;
+        if (bestStreak > playerData.bestStreak) playerData.bestStreak = bestStreak;
+        playerData.totalZombies += zombiesKilled;
+        playerData.totalCorrect += totalCorrectAnswers;
+        playerData.totalQuestions += totalQuestions;
+        
+        if (currentLevel >= 9) {
+            playerData.gameBeaten = true;
+            playerData.timesBeaten++;
+            if (gameMode === 'hard') playerData.hardModeBeaten = (playerData.hardModeBeaten || 0) + 1;
+        }
+        
+        checkUnlocks();
+        saveProgress();
+        
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('zombiesKilled').textContent = zombiesKilled;
+        document.getElementById('continueLevelHint').textContent = currentLevel;
+        document.getElementById('continueSection').style.display = continueUsed ? 'none' : 'block';
+        document.getElementById('gameOver').style.display = 'block';
+        clearSavedGame();
+    }
+    
+    function update() {
+        if (!gameRunning || gamePaused) return;
+        
+        if (shootCooldown > 0) shootCooldown--;
+        if (invulnerableTimer > 0) invulnerableTimer--;
+        if (mathPromptCooldown > 0) mathPromptCooldown--;
+
+        if (burstDelay > 0) burstDelay--;
+        if (burstCount > 0 && burstDelay <= 0) {
+            const w = WEAPONS.burstRifle;
+            const angle = player.angle;
+            bullets.push({
+                x: player.x, y: player.y,
+                dx: Math.cos(angle) * 6,
+                dy: Math.sin(angle) * 6,
+                size: 8, color: w.color, damage: w.damage
+            });
+            playSound('shoot');
+            burstCount--;
+            burstDelay = 6;
+        }
+
+        if (weapon === 'minigun' && mouseDown) {
+            spinupFrames = Math.min(60, spinupFrames + 1);
+        }
+        const minigunCooldown = Math.max(3, Math.round(20 - spinupFrames * 0.28));
+
+        if (mouseDown && shootCooldown <= 0) {
+            const isAutoFire   = weapon === 'smg' || weapon === 'minigun';
+            const isMouseUpFire = weapon === 'rifle' || weapon === 'sniper';
+
+            if (!isMouseUpFire && (isAutoFire || !clickFired)) {
+                if (weapon === 'burstRifle' && burstCount === 0) {
+                    burstCount = 3;
+                    shootCooldown = WEAPONS[weapon].cooldown;
+                } else if (weapon !== 'burstRifle') {
+                    shoot();
+                    shootCooldown = weapon === 'minigun' ? minigunCooldown : WEAPONS[weapon].cooldown;
+                }
+                if (!isAutoFire) clickFired = true;
+            }
+        }
+        
+        if (shieldTimer > 0) {
+            shieldTimer--;
+            if (shieldTimer === 0) shieldActive = false;
+        }
+        
+        if (slowMoTimer > 0) {
+            slowMoTimer--;
+            if (slowMoTimer === 0) slowMoActive = false;
+        }
+        
+        if (bossActive && boss) {
+            updateBoss();
+        }
+        
+        if (keys['w']) player.y -= player.speed;
+        if (keys['s']) player.y += player.speed;
+        if (keys['a']) player.x -= player.speed;
+        if (keys['d']) player.x += player.speed;
+        
+        player.x = Math.max(player.size + 5, Math.min(canvas.width - player.size - 5, player.x));
+        player.y = Math.max(player.size + 5, Math.min(canvas.height - player.size - 5, player.y));
+        player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+        
+        const bulletSpeed = slowMoActive ? 0.5 : 1;
+        const zombieSpeed = slowMoActive ? 0.5 : 1;
+        
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            if (bullets[i].trail) { bullets[i].trail.push({ x: bullets[i].x, y: bullets[i].y }); if (bullets[i].trail.length > 5) bullets[i].trail.shift(); }
+            bullets[i].x += bullets[i].dx * bulletSpeed;
+            bullets[i].y += bullets[i].dy * bulletSpeed;
+
+            if (bullets[i].x < -20 || bullets[i].x > canvas.width + 20 ||
+                bullets[i].y < -20 || bullets[i].y > canvas.height + 20) {
+                bullets.splice(i, 1);
+                continue;
+            }
+
+            if (bullets[i].type === 'enemy') continue;
+
+            let bulletRemoved = false;
+
+            for (let j = zombies.length - 1; j >= 0; j--) {
+                const dx = bullets[i].x - zombies[j].x;
+                const dy = bullets[i].y - zombies[j].y;
+                if (Math.sqrt(dx*dx + dy*dy) >= bullets[i].size + zombies[j].size) continue;
+
+                if (bullets[i].explosive) {
+                    const bx = bullets[i].x, by = bullets[i].y;
+                    explosions.push({ x: bx, y: by, radius: 10, maxRadius: 60, life: 20, maxLife: 20 });
+                    bullets.splice(i, 1);
+                    bulletRemoved = true;
+                    for (let k = zombies.length - 1; k >= 0; k--) {
+                        const ex = zombies[k].x - bx, ey = zombies[k].y - by;
+                        if (Math.sqrt(ex*ex + ey*ey) <= 60) {
+                            const killedZombie = zombies[k];
+                            score += 5; zombiesKilled++;
+                            { const _kpNova = (playerData.selectedEffects || []).includes('deathNova'); for (let p = 0; p < (_kpNova ? 10 : 6); p++) killParticles.push({ x: killedZombie.x, y: killedZombie.y, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4, life: 20, maxLife: 20, color: killedZombie.color, whiteFrames: 3, nova: _kpNova }); }
+                            zombies.splice(k, 1);
+                            hitsSinceQuestion++;
+                            if (hitsSinceQuestion >= 3) {
+                                if (mathPromptCooldown > 0) {
+                                    hitsSinceQuestion = 0;
+                                } else {
+                                    showMathProblem(killedZombie);
+                                    hitsSinceQuestion = 0;
+                                    mathPromptCooldown = 120;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                if (bullets[i].slowOnHit) {
+                    if (!zombies[j].slowed) {
+                        zombies[j].slowed = true;
+                        zombies[j].slowTimer = 120;
+                        zombies[j].baseSpeed = zombies[j].speed;
+                        zombies[j].speed *= 0.3;
+                    }
+                    bullets.splice(i, 1);
+                    bulletRemoved = true;
+                    break;
+                }
+
+                if (bullets[i].knockback) {
+                    const pdx = zombies[j].x - player.x;
+                    const pdy = zombies[j].y - player.y;
+                    const pdist = Math.sqrt(pdx*pdx + pdy*pdy) || 1;
+                    const killedZombie = zombies[j];
+                    zombies[j].x += (pdx / pdist) * bullets[i].knockback;
+                    zombies[j].y += (pdy / pdist) * bullets[i].knockback;
+                    zombies[j].knockedBack = true;
+                    bullets.splice(i, 1);
+                    bulletRemoved = true;
+                    score += 5; zombiesKilled++;
+                    hitsSinceQuestion++;
+                    if (hitsSinceQuestion >= 3) {
+                        if (mathPromptCooldown > 0) {
+                            hitsSinceQuestion = 0;
+                        } else {
+                            showMathProblem(killedZombie);
+                            hitsSinceQuestion = 0;
+                            mathPromptCooldown = 120;
+                        }
+                    }
+                    break;
+                }
+
+                // Normal hit (or piercing)
+                const killedZombie = zombies[j];
+                { const _kpNova = (playerData.selectedEffects || []).includes('deathNova'); const _kpCount = _kpNova ? 20 : 6; const _kpSpd = _kpNova ? 10 : 4; const _kpLife = _kpNova ? 35 : 20; for (let p = 0; p < _kpCount; p++) killParticles.push({ x: killedZombie.x, y: killedZombie.y, dx: (Math.random()-0.5)*_kpSpd, dy: (Math.random()-0.5)*_kpSpd, life: _kpLife, maxLife: _kpLife, color: killedZombie.color, whiteFrames: 3, nova: _kpNova }); if (_kpNova) explosions.push({ x: killedZombie.x, y: killedZombie.y, maxRadius: 80, life: 25, maxLife: 25, color: killedZombie.color }); }
+                zombies.splice(j, 1);
+                score += 5; zombiesKilled++;
+                hitsSinceQuestion += bullets[i].damage || 1;
+                if (hitsSinceQuestion >= 3) {
+                    if (mathPromptCooldown > 0) {
+                        hitsSinceQuestion = 0;
+                    } else {
+                        showMathProblem(killedZombie);
+                        hitsSinceQuestion = 0;
+                        mathPromptCooldown = 120;
+                        bullets.splice(i, 1);
+                        bulletRemoved = true;
+                        break;
+                    }
+                }
+                if (!bullets[i].piercing) {
+                    bullets.splice(i, 1);
+                    bulletRemoved = true;
+                    break;
+                }
+                // piercing: continue to next zombie
+            }
+
+            if (!bulletRemoved && bossActive && boss) {
+                const dx = bullets[i].x - boss.x;
+                const dy = bullets[i].y - boss.y;
+                if (Math.sqrt(dx*dx + dy*dy) < bullets[i].size + boss.size) {
+                    const bulletDmg = bullets[i].damage || 1;
+                    bullets.splice(i, 1);
+                    hitsSinceQuestion += bulletDmg;
+                    if (hitsSinceQuestion >= 3) {
+                        if (mathPromptCooldown > 0) {
+                            hitsSinceQuestion = 0;
+                        } else {
+                            currentZombie = 'BOSS';
+                            showMathProblem('BOSS');
+                            hitsSinceQuestion = 0;
+                            mathPromptCooldown = 120;
+                        }
+                    }
+                }
+            }
+        }
+        
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            if (bullets[i] && bullets[i].type === 'enemy' && invulnerableTimer <= 0 && !godMode && !shieldActive) {
+                const dx = bullets[i].x - player.x;
+                const dy = bullets[i].y - player.y;
+                if (Math.sqrt(dx*dx + dy*dy) < bullets[i].size + player.size) {
+                    bullets.splice(i, 1);
+                    lives--;
+                    invulnerableTimer = 120;
+                    if (lives <= 0) gameOver();
+                }
+            }
+        }
+        
+        for (let i = zombies.length - 1; i >= 0; i--) {
+            if (zombies[i].slowed) {
+                zombies[i].slowTimer--;
+                if (zombies[i].slowTimer <= 0) {
+                    const expiredZombie = zombies[i];
+                    score += 5; zombiesKilled++;
+                    { const _kpNova = (playerData.selectedEffects || []).includes('deathNova'); const _kpCount = _kpNova ? 20 : 6; const _kpSpd = _kpNova ? 10 : 4; const _kpLife = _kpNova ? 35 : 20; for (let p = 0; p < _kpCount; p++) killParticles.push({ x: expiredZombie.x, y: expiredZombie.y, dx: (Math.random()-0.5)*_kpSpd, dy: (Math.random()-0.5)*_kpSpd, life: _kpLife, maxLife: _kpLife, color: expiredZombie.color, whiteFrames: 3, nova: _kpNova }); if (_kpNova) explosions.push({ x: expiredZombie.x, y: expiredZombie.y, maxRadius: 80, life: 25, maxLife: 25, color: expiredZombie.color }); }
+                    zombies.splice(i, 1);
+                    hitsSinceQuestion++;
+                    if (hitsSinceQuestion >= 3) {
+                        if (mathPromptCooldown > 0) {
+                            hitsSinceQuestion = 0;
+                        } else {
+                            showMathProblem(expiredZombie);
+                            hitsSinceQuestion = 0;
+                            mathPromptCooldown = 120;
+                        }
+                    }
+                    continue;
+                }
+            }
+            if (zombies[i].knockedBack) {
+                zombies.splice(i, 1);
+                continue;
+            }
+            const dx = player.x - zombies[i].x;
+            const dy = player.y - zombies[i].y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            zombies[i].x += (dx / dist) * zombies[i].speed * zombieSpeed;
+            zombies[i].y += (dy / dist) * zombies[i].speed * zombieSpeed;
+
+            if (dist < zombies[i].size + player.size && invulnerableTimer <= 0 && !godMode && !shieldActive) {
+                lives--;
+                invulnerableTimer = 120;
+                zombies.splice(i, 1);
+                if (lives <= 0) gameOver();
+            }
+        }
+        
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            powerups[i].life--;
+            const dx = powerups[i].x - player.x;
+            const dy = powerups[i].y - player.y;
+            
+            if (Math.sqrt(dx*dx + dy*dy) < powerups[i].size + player.size) {
+                playSound('powerup');
+                
+                if (powerups[i].type === 'shield') {
+                    shieldActive = true;
+                    shieldTimer = 1440;
+                } else if (powerups[i].type === 'slowmo') {
+                    slowMoActive = true;
+                    slowMoTimer = 1800;
+                }
+                
+                powerups.splice(i, 1);
+            } else if (powerups[i].life <= 0) {
+                powerups.splice(i, 1);
+            }
+        }
+        
+        for (let i = healthPickups.length - 1; i >= 0; i--) {
+            healthPickups[i].life--;
+            const dx = healthPickups[i].x - player.x;
+            const dy = healthPickups[i].y - player.y;
+            
+            if (Math.sqrt(dx*dx + dy*dy) < healthPickups[i].size + player.size) {
+                if (lives < 5) {
+                    lives++;
+                    playSound('powerup');
+                }
+                healthPickups.splice(i, 1);
+            } else if (healthPickups[i].life <= 0) {
+                healthPickups.splice(i, 1);
+            }
+        }
+
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            explosions[i].life--;
+            if (explosions[i].life <= 0) explosions.splice(i, 1);
+        }
+
+        for (let i = killParticles.length - 1; i >= 0; i--) {
+            const kp = killParticles[i];
+            kp.x += kp.dx;
+            kp.y += kp.dy;
+            kp.life--;
+            if (kp.whiteFrames > 0) kp.whiteFrames--;
+            if (kp.life <= 0) killParticles.splice(i, 1);
+        }
+
+        if (!bossActive) {
+            zombieSpawnTimer++;
+            const spawnInterval = Math.max(60, 180 - currentLevel * 15);
+            
+            if (zombieSpawnTimer > spawnInterval && zombies.length < Math.min(6 + currentLevel, 15)) {
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                
+                switch(side) {
+                    case 0: x = Math.random() * canvas.width; y = -20; break;
+                    case 1: x = canvas.width + 20; y = Math.random() * canvas.height; break;
+                    case 2: x = Math.random() * canvas.width; y = canvas.height + 20; break;
+                    case 3: x = -20; y = Math.random() * canvas.height; break;
+                }
+                
+                zombies.push({
+                    x, y,
+                    size: 12,
+                    speed: 0.5 + currentLevel * 0.05,
+                    color: levelConfig[currentLevel]?.zombieColor || 'hsl(120, 70%, 30%)'
+                });
+                
+                zombieSpawnTimer = 0;
+            }
+        }
+        
+        document.getElementById('score').textContent = score;
+        document.getElementById('lives').textContent = lives;
+        document.getElementById('level').textContent = currentLevel;
+        document.getElementById('correctCount').textContent = correctAnswers;
+        document.getElementById('streakDisplay').textContent = streak;
+        const nextMilestone = Math.ceil((correctAnswers + 1) / 5) * 5;
+        document.getElementById('nextUpgrade').textContent = nextMilestone;
+
+        const bossWarningEl = document.getElementById('bossWarning');
+        if (bossActive && boss && boss.charging && boss.chargeDelay > 0) {
+            bossWarningEl.style.display = 'block';
+        } else {
+            bossWarningEl.style.display = 'none';
+        }
+
+        const streakCounterEl = document.getElementById('streakCounter');
+        if (streak >= 3) {
+            streakCounterEl.textContent = streak + ' 🔥';
+            streakCounterEl.style.display = 'block';
+        } else {
+            streakCounterEl.style.display = 'none';
+        }
+
+        const shieldBarEl = document.getElementById('shieldBar');
+        const slowBarEl = document.getElementById('slowBar');
+        shieldBarEl.style.display = shieldActive ? 'block' : 'none';
+        slowBarEl.style.display = slowMoActive ? 'block' : 'none';
+        if (shieldActive) document.getElementById('shieldBarFill').style.width = Math.round((shieldTimer / 1440) * 100) + '%';
+        if (slowMoActive) document.getElementById('slowBarFill').style.width = Math.round((slowMoTimer / 1800) * 100) + '%';
+    }
+
+    function getPlayerColors() {
+        const skin = SKINS[playerData.selectedSkin];
+        return { color1: skin.color1, color2: skin.color2 };
+    }
+    
+    function draw() {
+        ctx.save();
+        if (screenShake > 0) { ctx.translate(Math.random()*8-4, Math.random()*8-4); screenShake--; }
+        ctx.fillStyle = levelConfig[currentLevel]?.bg || '#1a3a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        for (let pickup of healthPickups) {
+            ctx.save();
+            ctx.translate(pickup.x, pickup.y);
+            ctx.rotate(Date.now() / 300);
+
+            ctx.globalAlpha = Math.min(1, pickup.life / 120);
+
+            ctx.fillStyle = '#00ff00';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, pickup.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-2, -8, 4, 16);
+            ctx.fillRect(-8, -2, 16, 4);
+
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+        
+        if (bossActive && boss) {
+            drawBoss();
+        }
+
+        // Sniper targeting line
+        if (weapon === 'sniper' && mouseDown && gameRunning && !gamePaused) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle) * 1200,
+                player.y + Math.sin(player.angle) * 1200
+            );
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        const colors = getPlayerColors();
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.angle);
+
+        if (invulnerableTimer > 0 && Math.floor(invulnerableTimer / 5) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+
+        if (streak >= 10 && (playerData.selectedEffects || []).includes('bulletTrail')) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = SKINS[playerData.selectedSkin]?.color1 || '#4488ff';
+        }
+
+        if (colors.color1 === 'rainbow') {
+            const gradient = ctx.createLinearGradient(-player.size, 0, player.size, 0);
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(0.2, '#ffaa00');
+            gradient.addColorStop(0.4, '#00ff00');
+            gradient.addColorStop(0.6, '#00aaff');
+            gradient.addColorStop(0.8, '#aa00ff');
+            gradient.addColorStop(1, '#ff00ff');
+            ctx.fillStyle = gradient;
+        } else if (colors.color1 === 'fire') {
+            const gradient = ctx.createLinearGradient(0, -player.size, 0, player.size);
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(0.5, '#ff6600');
+            gradient.addColorStop(1, '#ffaa00');
+            ctx.fillStyle = gradient;
+        } else if (colors.color1 === 'galaxy') {
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, player.size);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.3, '#ff00ff');
+            gradient.addColorStop(0.6, '#6600ff');
+            gradient.addColorStop(1, '#000033');
+            ctx.fillStyle = gradient;
+        } else {
+            ctx.fillStyle = colors.color1;
+        }
+        
+        ctx.fillRect(-player.size, -player.size/2, player.size * 2, player.size);
+        
+        if (colors.color2 === 'rainbow' || colors.color2 === colors.color1) {
+        } else {
+            ctx.fillStyle = colors.color2;
+        }
+        ctx.fillRect(player.size/2, -player.size/3, player.size, player.size/1.5);
+        
+        if (shieldActive) {
+            ctx.globalAlpha = 0.3;
+            ctx.strokeStyle = '#00aaff';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, player.size + 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Rifle charge indicator
+        if (weapon === 'rifle' && mouseDown && chargeStart > 0 && gameRunning && !gamePaused) {
+            const held = Math.min(500, Date.now() - chargeStart);
+            const pct = held / 500;
+            ctx.save();
+            ctx.strokeStyle = `hsl(${120 - pct * 120}, 100%, 55%)`;
+            ctx.lineWidth = 4;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size + 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+
+        for (let bullet of bullets) {
+            if (bullet.trail && (playerData.selectedEffects || []).includes('bulletTrail')) {
+                const alphas = [0.2, 0.35, 0.5, 0.65, 0.8];
+                ctx.shadowColor = bullet.color;
+                ctx.shadowBlur = 10;
+                bullet.trail.forEach((pos, idx) => {
+                    ctx.globalAlpha = alphas[idx] ?? 0.2;
+                    ctx.fillStyle = bullet.color;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, bullet.size * (0.5 + idx * 0.12), 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+            ctx.fillStyle = bullet.color;
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
+        for (let zombie of zombies) {
+            ctx.fillStyle = zombie.color;
+            ctx.beginPath();
+            ctx.arc(zombie.x, zombie.y, zombie.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(zombie.x - 4, zombie.y - 4, 2, 0, Math.PI * 2);
+            ctx.arc(zombie.x + 4, zombie.y - 4, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Explosions
+        for (const exp of explosions) {
+            const alpha = exp.life / exp.maxLife;
+            const radius = exp.maxRadius * (1 - exp.life / exp.maxLife);
+            ctx.save();
+            if (exp.color) {
+                ctx.globalAlpha = alpha * 0.85;
+                ctx.strokeStyle = exp.color;
+                ctx.lineWidth = 5;
+                ctx.shadowColor = exp.color;
+                ctx.shadowBlur = 22;
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, Math.max(1, radius), 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.globalAlpha = alpha * 0.7;
+                ctx.fillStyle = 'rgba(255, 120, 0, 0.35)';
+                ctx.strokeStyle = '#ff8800';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, Math.max(1, radius), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+
+        for (const kp of killParticles) {
+            const isNova = kp.nova && (playerData.selectedEffects || []).includes('deathNova');
+            ctx.globalAlpha = kp.life / kp.maxLife;
+            ctx.fillStyle = kp.whiteFrames > 0 ? '#ffffff' : kp.color;
+            if (isNova) { ctx.shadowColor = kp.color; ctx.shadowBlur = 14; }
+            ctx.beginPath();
+            ctx.arc(kp.x, kp.y, isNova ? 8 : 3, 0, Math.PI * 2);
+            ctx.fill();
+            if (isNova) ctx.shadowBlur = 0;
+        }
+        ctx.globalAlpha = 1;
+
+        for (let powerup of powerups) {
+            ctx.save();
+            ctx.translate(powerup.x, powerup.y);
+
+            const fadeAlpha = Math.min(1, powerup.life / 120);
+
+            // Rotating ring only
+            ctx.save();
+            ctx.rotate(Date.now() / 500);
+            ctx.globalAlpha = fadeAlpha;
+            ctx.strokeStyle = powerup.color;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, powerup.size, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = fadeAlpha * (0.5 + Math.sin(powerup.life / 10) * 0.3);
+            ctx.shadowColor = powerup.color;
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(0, 0, powerup.size, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+
+            // Upright icon and label (no rotation)
+            ctx.globalAlpha = fadeAlpha;
+            ctx.fillStyle = powerup.color;
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(powerup.type === 'shield' ? '🛡️' : '⏱️', 0, 0);
+            ctx.font = '11px Courier New';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(powerup.type === 'shield' ? 'SHIELD' : 'SLOW-MO', 0, powerup.size + 14);
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
+        }
+        
+        if (slowMoActive) {
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        if (gameRunning && !gamePaused && zombies.length === 0 && bullets.length === 0 && zombieSpawnTimer < 30) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Use WASD to move, click to shoot!', canvas.width/2, canvas.height/2);
+            ctx.fillText('Zombies incoming...', canvas.width/2, canvas.height/2 + 30);
+        }
+        ctx.restore();
+    }
+
+    function scheduleMusic() {
+        const lookahead = 0.5;
+        const now = audioContext.currentTime;
+        const track = LEVEL_MUSIC[Math.min(currentLevel - 1, LEVEL_MUSIC.length - 1)];
+        const leadDur = bossActive ? 0.10 : 0.125;
+        const bassDur = bossActive ? 0.20 : 0.25;
+
+        while (nextLeadTime < now + lookahead) {
+            const freq = track.lead[leadNoteIdx % track.lead.length];
+            if (freq > 0) {
+                const osc = audioContext.createOscillator();
+                osc.type = 'square';
+                osc.frequency.value = freq;
+                const g = audioContext.createGain();
+                g.gain.setValueAtTime(0, nextLeadTime);
+                g.gain.linearRampToValueAtTime(1, nextLeadTime + 0.01);
+                g.gain.setValueAtTime(1, nextLeadTime + leadDur * 0.95);
+                g.gain.linearRampToValueAtTime(0, nextLeadTime + leadDur);
+                osc.connect(g);
+                g.connect(leadMusicGain);
+                osc.start(nextLeadTime);
+                osc.stop(nextLeadTime + leadDur);
+            }
+            leadNoteIdx = (leadNoteIdx + 1) % track.lead.length;
+            nextLeadTime += leadDur;
+        }
+
+        while (nextBassTime < now + lookahead) {
+            const freq = track.bass[bassNoteIdx % track.bass.length];
+            if (freq > 0) {
+                const osc = audioContext.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.value = freq;
+                const g = audioContext.createGain();
+                g.gain.setValueAtTime(0, nextBassTime);
+                g.gain.linearRampToValueAtTime(1, nextBassTime + 0.01);
+                g.gain.setValueAtTime(1, nextBassTime + bassDur * 0.95);
+                g.gain.linearRampToValueAtTime(0, nextBassTime + bassDur);
+                osc.connect(g);
+                g.connect(bassMusicGain);
+                osc.start(nextBassTime);
+                osc.stop(nextBassTime + bassDur);
+            }
+            bassNoteIdx = (bassNoteIdx + 1) % track.bass.length;
+            nextBassTime += bassDur;
+        }
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+    
+    gameLoop();
+    console.log('✅ Game Ready!');
+});
+    </script>
+</body>
+</html>
