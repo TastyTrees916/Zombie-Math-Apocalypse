@@ -619,7 +619,8 @@
     inner.style.height = (600 * scale) + 'px';
   }
 
-  setTimeout(scaleGame, 200);
+  requestAnimationFrame(scaleGame);
+  window.addEventListener('load', scaleGame);
   window.addEventListener('resize', scaleGame);
 </script>
 
