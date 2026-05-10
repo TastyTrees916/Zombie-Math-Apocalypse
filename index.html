@@ -242,7 +242,7 @@
 
   .game-frame {
     width: 800px;
-    height: 600px;
+    height: 900px;
     border: none;
     display: block;
     background: #000;
@@ -609,22 +609,26 @@
     yellDiv.classList.add('pop');
   });
 
+  // The game's intro modal is ~750px tall and centers vertically in the iframe
+  // viewport. If the iframe is only 600px tall (matching the canvas), the modal
+  // gets clipped top AND bottom. We give the iframe extra height so the modal
+  // fits, and during canvas gameplay the extra space just looks like screen bezel.
+  const NATIVE_W = 800;
+  const NATIVE_H = 900;
+
   function scaleGame() {
     const frame = document.querySelector('.game-frame');
     const inner = document.querySelector('.screen-inner');
     const w = inner.getBoundingClientRect().width;
-    const scale = w / 800;
-    // Scale from top-left, then the container height matches exactly
+    const scale = w / NATIVE_W;
     frame.style.transformOrigin = '0 0';
     frame.style.transform = 'scale(' + scale + ')';
-    // Set container height to exactly the scaled game height
-    inner.style.height = Math.ceil(600 * scale) + 'px';
+    inner.style.height = Math.ceil(NATIVE_H * scale) + 'px';
     inner.style.overflow = 'hidden';
   }
 
   window.addEventListener('load', scaleGame);
   window.addEventListener('resize', scaleGame);
-  // Belt and suspenders — run several times as layout settles
   setTimeout(scaleGame, 100);
   setTimeout(scaleGame, 500);
   setTimeout(scaleGame, 1000);
