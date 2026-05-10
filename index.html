@@ -612,16 +612,17 @@
   function scaleGame() {
     const frame = document.querySelector('.game-frame');
     const inner = document.querySelector('.screen-inner');
-    const scale = inner.clientWidth / 800;
-    frame.style.transform = `scale(${scale})`;
-    frame.style.width = '800px';
-    frame.style.height = '600px';
+    // Measure the actual rendered container width
+    const w = inner.getBoundingClientRect().width;
+    const scale = w / 800;
+    frame.style.transform = 'scale(' + scale + ')';
     inner.style.height = (600 * scale) + 'px';
   }
 
-  requestAnimationFrame(scaleGame);
+  // Wait for full layout then scale
   window.addEventListener('load', scaleGame);
   window.addEventListener('resize', scaleGame);
+  setTimeout(scaleGame, 300);
 </script>
 
 </body>
